@@ -155,6 +155,7 @@ class EstimateTimelogController < ApplicationController
       sql << "      (spent_on BETWEEN '%s' AND '%s')" % [ActiveRecord::Base.connection.quoted_date(@from.to_time), ActiveRecord::Base.connection.quoted_date(@to.to_time)]
       sql << "    group by #{sql_group_by_yotei}, issues.id, tyear,tmonth  ) jisseki "
       sql << "ON (yotei.issue_id=jisseki.issue_id)  "
+      sql << "WHERE yotei.hours_est > 0 OR jisseki.hours > 0 "
 
       @hours = ActiveRecord::Base.connection.select_all(sql)
       
