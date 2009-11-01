@@ -30,10 +30,10 @@ dbのmigretionは必要ありません。
 
 == version 0.0.2
 
-<ul>予定も実績も0のレコードは除外するように変更</ul>
+- 予定も実績も0のレコードは除外するように変更
 
 == version 0.0.1
 
-<ul>first commit</ul>
+- first commit
 
 
