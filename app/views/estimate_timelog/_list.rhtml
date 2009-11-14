@@ -25,8 +25,9 @@
 <% end -%>
 </td>
 <td class="comments"><%=h entry.comments %></td>
-<td class="hours"><%= html_hours("%.2f" % entry.issue.estimated_hours) %></td>
-<td class="hours"><%= html_hours("%.2f" % entry.hours) %></td>
+<td class="hours"><%= html_hours("%.2f" % entry.issue.estimated_hours) if entry && entry.issue %></td>
+<td class="hours"><%= html_hours("%.2f" % entry.hours) if entry %></td>
+
 <td align="center">
 <% if entry.editable_by?(User.current) -%>
     <%= link_to image_tag('edit.png'), {:controller => 'estimate_timelog', :action => 'edit', :id => entry, :project_id => nil},
