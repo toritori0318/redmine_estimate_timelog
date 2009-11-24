@@ -6,7 +6,7 @@
     <% tmp_value = format_criteria_value(criterias[level], value) %>
     <% check_value = tmp_value.to_s.scan(/#([0-9]*):/) %>
     <% if check_value.length > 0 %>
-    <td><a class=" issue" href="/issues/show/<%= check_value[0][0] %>"><%= h(format_criteria_value(criterias[level], value)) %></a> </td>
+    <td><%= link_to h(format_criteria_value(criterias[level], value)), :controller => 'issues', :action => 'show', :id => check_value[0][0] %></td>
     <% else %>
     <td><%= h(format_criteria_value(criterias[level], value)) %></td>
     <% end %>

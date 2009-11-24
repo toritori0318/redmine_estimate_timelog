@@ -17,7 +17,7 @@
         </p>
     </fieldset>
     <p>
-    <fieldset id="filters"><legend><%= l(:field_assigned_to) %></legend>
+    <fieldset id="filters"><legend><%= l(:et_label_base_summary) %></legend>
         <p>
         <%= radio_button_tag 'est_type', '1', @est_flg %>
         <%= l(:et_label_radio_estimated) %>
@@ -26,7 +26,7 @@
         </p>
     </fieldset>
 
-    <fieldset id="filters"><legend><%= l(:et_label_base_summary) %></legend>
+    <fieldset id="filters"><legend><%= l(:field_assigned_to) %></legend>
         <p>
         <%=  check_box_tag 'my_type', User.current.id ,@mine_flg %> <%= l(:et_label_mine) %>
         </p>

@@ -56,29 +56,6 @@ class EstimateTimelogController < ApplicationController
                                          :label => :label_issue}
                            }
 
-    #@available_criterias = { 'project' => {:sql => "case when jisseki.project != '' then jisseki.project else yotei.project end",
-    #                                      :klass => Project,
-    #                                      :label => :label_project},
-    #                         'version' => {:sql => "case when jisseki.version != '' then jisseki.version else yotei.version end",
-    #                                      :klass => Version,
-    #                                      :label => :label_version},
-    #                         'category' => {:sql => "case when jisseki.category != '' then jisseki.category else yotei.category end",
-    #                                        :klass => IssueCategory,
-    #                                        :label => :field_category},
-    #                         'member' => {:sql => "case when jisseki.member != '' then jisseki.member else yotei.member end",
-    #                                     :klass => User,
-    #                                     :label => :label_member},
-    #                         'tracker' => {:sql => "case when jisseki.tracker != '' then jisseki.tracker else yotei.tracker end",
-    #                                      :klass => Tracker,
-    #                                      :label => :label_tracker},
-    #                         'activity' => {:sql => "case when jisseki.activity != '' then jisseki.activity else yotei.activity end",
-    #                                       :klass => Enumeration,
-    #                                       :label => :label_activity},
-    #                         'issue' => {:sql => "case when jisseki.issue != '' then jisseki.issue else yotei.issue end",
-    #                                     :klass => Issue,
-    #                                     :label => :label_issue}
-    #                       }
-    
     @available_criterias_yotei = { 'project' => {:sql => "issues.project_id",
                                           :klass => Project,
                                           :label => :label_project},
@@ -148,7 +125,6 @@ class EstimateTimelogController < ApplicationController
     @criterias = @criterias.select{|criteria| @available_criterias.has_key? criteria}
     @criterias.uniq!
     @criterias = @criterias[0,3]
-
     
     @columns = (params[:columns] && %w(year month week day).include?(params[:columns])) ? params[:columns] : 'month'
     
@@ -157,12 +133,12 @@ class EstimateTimelogController < ApplicationController
     unless @criterias.empty?
       @column_tbl = ''
       if params[:est_type] = '1' 
-        @column_tbl = 'yotei.'
+        @column_tbl = 'yotei'
       else params[:est_type] = '2' 
-        @column_tbl = 'jisseki.'
+        @column_tbl = 'jisseki'
       end
-      sql_select_all = @criterias.collect{|criteria| @column_tbl + @available_criterias[criteria][:sql] + " AS " + criteria}.join(', ')
-      sql_group_by_all = @criterias.collect{|criteria| @column_tbl + @available_criterias[criteria][:sql]}.join(', ')
+      sql_select_all = @criterias.collect{|criteria| @column_tbl + '.' +@available_criterias[criteria][:sql] + " AS " + criteria}.join(', ')
+      sql_group_by_all = @criterias.collect{|criteria| @column_tbl + '.' + @available_criterias[criteria][:sql]}.join(', ')
 
       sql_select_yotei = @criterias.collect{|criteria| @available_criterias_yotei[criteria][:sql] + " AS " + criteria}.join(', ')
       sql_group_by_yotei = @criterias.collect{|criteria| @available_criterias_yotei[criteria][:sql]}.join(', ')
@@ -171,33 +147,33 @@ class EstimateTimelogController < ApplicationController
       sql_group_by_jisseki = @criterias.collect{|criteria| @available_criterias_jisseki[criteria][:sql]}.join(', ')
 
       sql  = "SELECT "
-      sql << "#{sql_select_all}, yotei.tyear, yotei.tmonth, yotei.hours_est, jisseki.hours "
+      sql << "#{sql_select_all}, #{@column_tbl}.tyear, #{@column_tbl}.tmonth, yotei.hours_est, jisseki.hours "
       sql << "FROM   "
       sql << "(SELECT #{sql_select_yotei}, issues.id as issue_id, DATE_FORMAT(start_date,'%Y')  as tyear, DATE_FORMAT(start_date,'%m') as tmonth, '' as tweek,  "
       sql << "    '' as spent_on, SUM(estimated_hours) AS hours_est   "
       sql << "    FROM issues  "
       sql << "    LEFT JOIN projects ON issues.project_id = projects.id   "
-      sql << "      WHERE "
-      sql << "      (%s) AND" % @project.project_condition(Setting.display_subprojects_issues?) if @project
-      sql << "      (%s) AND" % Project.allowed_to_condition(User.current, :view_time_entries)
-      if params[:est_type] = '1' 
-        sql << "     (start_date BETWEEN '%s' AND '%s')" % [ActiveRecord::Base.connection.quoted_date(@from.to_time), ActiveRecord::Base.connection.quoted_date(@to.to_time)]
+      sql << "      WHERE 1=1"
+      sql << "      AND (%s) " % @project.project_condition(Setting.display_subprojects_issues?) if @project
+      sql << "      AND (%s) " % Project.allowed_to_condition(User.current, :view_time_entries)
+      if params[:est_type] == '1' 
+        sql << "     AND (start_date BETWEEN '%s' AND '%s')" % [ActiveRecord::Base.connection.quoted_date(@from.to_time), ActiveRecord::Base.connection.quoted_date(@to.to_time)]
         sql << "     AND (issues.author_id = '%s')" % [User.current.id] if params[:my_type]
       end
       sql << "    GROUP BY #{sql_group_by_yotei}, issues.id, tyear,tmonth ) yotei "
-      if params[:est_type] = '1' 
+      if params[:est_type] == '1'
         sql << "LEFT  "
-      else params[:est_type] = '2' 
+      elsif params[:est_type] == '2' 
         sql << "RIGHT "
       end
       sql << "JOIN "
       sql << "(SELECT #{sql_select_jisseki}, issues.id as issue_id, tyear,tmonth, '' as tweek, '' as spent_on, SUM(hours) AS hours FROM time_entries  LEFT JOIN issues ON time_entries.issue_id = issues.id   "
       sql << "    LEFT JOIN       projects ON issues.project_id = projects.id "
-      sql << "      WHERE"
-      sql << "      (%s) AND" % @project.project_condition(Setting.display_subprojects_issues?) if @project
-      sql << "      (%s) AND" % Project.allowed_to_condition(User.current, :view_time_entries)
-      if params[:est_type] = '2' 
-        sql << "     (spent_on BETWEEN '%s' AND '%s')" % [ActiveRecord::Base.connection.quoted_date(@from.to_time), ActiveRecord::Base.connection.quoted_date(@to.to_time)]
+      sql << "      WHERE 1=1"
+      sql << "      AND (%s) " % @project.project_condition(Setting.display_subprojects_issues?) if @project
+      sql << "      AND (%s) " % Project.allowed_to_condition(User.current, :view_time_entries)
+      if params[:est_type] == '2'  
+        sql << "     AND (spent_on BETWEEN '%s' AND '%s')" % [ActiveRecord::Base.connection.quoted_date(@from.to_time), ActiveRecord::Base.connection.quoted_date(@to.to_time)]
         sql << "     AND (time_entries.user_id = '%s')" % [User.current.id] if params[:my_type]
       end
       sql << "    group by #{sql_group_by_jisseki}, issues.id, tyear,tmonth  ) jisseki "
@@ -473,6 +449,12 @@ private
       @est_flg = false
     end
     @mine_flg = params[:my_type] || params[:mine_flg]
+p '------------------------------------------------' 
+p @free_period
+p @est_flg
+p @mine_flg
+p params
+p '------------------------------------------------' 
   end
 
 end
