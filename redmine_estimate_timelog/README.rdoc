@@ -26,7 +26,7 @@ dbのmigretionは必要ありません。
 
 = バージョン
 
-== version 1.0.0
+== version 0.1.0
 
 - redmine_estimate_timelogフォルダを最上位に作成（インストールしやすいようにしただけ）
 
