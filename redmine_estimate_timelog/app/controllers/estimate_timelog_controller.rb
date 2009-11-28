@@ -65,7 +65,7 @@ class EstimateTimelogController < ApplicationController
                              'category' => {:sql => "issues.category_id",
                                             :klass => IssueCategory,
                                             :label => :field_category},
-                             'member' => {:sql => "issues.author_id",
+                             'member' => {:sql => "issues.assigned_to_id",
                                          :klass => User,
                                          :label => :label_member},
                              'tracker' => {:sql => "issues.tracker_id",
@@ -78,7 +78,7 @@ class EstimateTimelogController < ApplicationController
                                          :klass => Issue,
                                          :label => :label_issue}
                            }
-    
+
     @available_criterias_jisseki = { 'project' => {:sql => "time_entries.project_id",
                                           :klass => Project,
                                           :label => :label_project},
@@ -125,6 +125,7 @@ class EstimateTimelogController < ApplicationController
     @criterias = @criterias.select{|criteria| @available_criterias.has_key? criteria}
     @criterias.uniq!
     @criterias = @criterias[0,3]
+
     
     @columns = (params[:columns] && %w(year month week day).include?(params[:columns])) ? params[:columns] : 'month'
     
@@ -132,12 +133,12 @@ class EstimateTimelogController < ApplicationController
     
     unless @criterias.empty?
       @column_tbl = ''
-      if params[:est_type] = '1' 
+      if params[:est_type] == '1' 
         @column_tbl = 'yotei'
-      else params[:est_type] = '2' 
+      elsif params[:est_type] == '2' 
         @column_tbl = 'jisseki'
       end
-      sql_select_all = @criterias.collect{|criteria| @column_tbl + '.' +@available_criterias[criteria][:sql] + " AS " + criteria}.join(', ')
+      sql_select_all = @criterias.collect{|criteria| @column_tbl +'.'+ @available_criterias[criteria][:sql] + " AS " + criteria}.join(', ')
       sql_group_by_all = @criterias.collect{|criteria| @column_tbl + '.' + @available_criterias[criteria][:sql]}.join(', ')
 
       sql_select_yotei = @criterias.collect{|criteria| @available_criterias_yotei[criteria][:sql] + " AS " + criteria}.join(', ')
@@ -158,10 +159,10 @@ class EstimateTimelogController < ApplicationController
       sql << "      AND (%s) " % Project.allowed_to_condition(User.current, :view_time_entries)
       if params[:est_type] == '1' 
         sql << "     AND (start_date BETWEEN '%s' AND '%s')" % [ActiveRecord::Base.connection.quoted_date(@from.to_time), ActiveRecord::Base.connection.quoted_date(@to.to_time)]
-        sql << "     AND (issues.author_id = '%s')" % [User.current.id] if params[:my_type]
+        sql << "     AND (issues.assigned_to_id = '%s')" % [User.current.id] if params[:my_type]
       end
       sql << "    GROUP BY #{sql_group_by_yotei}, issues.id, tyear,tmonth ) yotei "
-      if params[:est_type] == '1'
+      if params[:est_type] == '1' 
         sql << "LEFT  "
       elsif params[:est_type] == '2' 
         sql << "RIGHT "
@@ -172,12 +173,12 @@ class EstimateTimelogController < ApplicationController
       sql << "      WHERE 1=1"
       sql << "      AND (%s) " % @project.project_condition(Setting.display_subprojects_issues?) if @project
       sql << "      AND (%s) " % Project.allowed_to_condition(User.current, :view_time_entries)
-      if params[:est_type] == '2'  
+      if params[:est_type] == '2' 
         sql << "     AND (spent_on BETWEEN '%s' AND '%s')" % [ActiveRecord::Base.connection.quoted_date(@from.to_time), ActiveRecord::Base.connection.quoted_date(@to.to_time)]
         sql << "     AND (time_entries.user_id = '%s')" % [User.current.id] if params[:my_type]
       end
       sql << "    group by #{sql_group_by_jisseki}, issues.id, tyear,tmonth  ) jisseki "
-      sql << "ON (yotei.issue_id=jisseki.issue_id)  "
+      sql << "ON (yotei.tyear=jisseki.tyear AND  yotei.tmonth=jisseki.tmonth AND yotei.issue_id=jisseki.issue_id)  "
       sql << "WHERE yotei.hours_est > 0 OR jisseki.hours > 0 "
 
       @hours = ActiveRecord::Base.connection.select_all(sql)
@@ -304,7 +305,7 @@ class EstimateTimelogController < ApplicationController
         end
 
         if params[:my_type]
-            cond << ["#{Issue.table_name}.author_id = ?", User.current.id]
+            cond << ["#{Issue.table_name}.assigned_to_id = ?", User.current.id]
         end
 
         cond << ['start_date BETWEEN ? AND ?', @from, @to]
@@ -449,12 +450,6 @@ private
       @est_flg = false
     end
     @mine_flg = params[:my_type] || params[:mine_flg]
-p '------------------------------------------------' 
-p @free_period
-p @est_flg
-p @mine_flg
-p params
-p '------------------------------------------------' 
   end
 
 end
