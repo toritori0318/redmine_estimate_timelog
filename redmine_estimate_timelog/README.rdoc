@@ -26,6 +26,10 @@ dbのmigretionは必要ありません。
 
 = バージョン
 
+== version 0.1.1
+
+- IEで「レポートテンプレート」が効いていなかったバグの修正
+
 == version 0.1.0
 
 - redmine_estimate_timelogフォルダを最上位に作成（インストールしやすいようにしただけ）

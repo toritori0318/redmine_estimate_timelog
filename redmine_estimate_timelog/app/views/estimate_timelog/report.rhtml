@@ -17,7 +17,8 @@
 
   <p><%= l(:label_details) %>: <%= select_tag 'columns', options_for_select([[l(:label_year), 'year'],
                                                                             [l(:label_month).titleize, 'month']], @columns),
-                                                        :onchange => "this.form.onsubmit();" %>
+                                                                            :onchange => "this.form.onsubmit();",
+                                                                            :onclick => "this.blur();"%>
 
   <%= l(:button_add) %>: <%= select_tag('criterias[]', options_for_select([[]] + (@available_criterias.keys - @criterias).collect{|k| [l(@available_criterias[k][:label]), k]}),
                                                           :onchange => "this.form.onsubmit();",
