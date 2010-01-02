@@ -58,6 +58,14 @@ module EstimateTimelogHelper
     sum
   end
   
+  def get_issuescol(data, criteria, col)
+    ret = ""
+    data.each do |row|
+      ret = row[col].to_s
+    end
+    ret
+  end
+  
   def options_for_period_select(value)
     options_for_select([[l(:label_all_time), 'all'],
                         [l(:label_today), 'today'],
@@ -120,34 +128,25 @@ module EstimateTimelogHelper
     value.blank? ? l(:label_none) : ((k = @available_criterias[criteria][:klass]) ? k.find_by_id(value.to_i) : format_value(value, @available_criterias[criteria][:format]))
   end
   
-  def report_to_csv_est(criterias, periods, hours)
+  def report_to_csv_est(criterias, issue_cols, hours)
     export = StringIO.new
     CSV::Writer.generate(export, l(:general_csv_separator)) do |csv|
       # Column headers
-      #pr1 = periods+":"+l(et_label_estimated_hours)
-      #pr2 = periods+":"+l(et_label_hours)
       headers = criterias.collect {|criteria| l(@available_criterias[criteria][:label]) }
-      periods.each do |period|
-        headers << period+':'+l(:et_label_estimated_hours)
-        headers << period+':'+l(:et_label_hours)
-      end
-      headers << l(:et_label_estimated_total)
-      headers << l(:et_label_hours_total)
+      headers << l(:et_label_estimated_hours)
+      headers << l(:et_label_hours)
+      headers << issue_cols.collect {|col| l(@available_criterias[col][:label]) }
       csv << headers.collect {|c| to_utf8(c) }
       # Content
-      report_criteria_to_csv(csv, criterias, periods, hours)
+      report_criteria_to_csv(csv, criterias, issue_cols, hours)
       # Total row
       row = [ l(:label_total) ] + [''] * (criterias.size - 1)
       total_est = 0
       total = 0
-      periods.each do |period|
-        sum_est = sum_hours_est(select_hours(hours, @columns, period.to_s))
+        sum_est = sum_hours_est(select_hours(hours, @columns, ''))
         total_est += sum_est
-        row << (sum_est > 0 ? "%.2f" % sum_est : '')
-        sum = sum_hours(select_hours(hours, @columns, period.to_s))
+        sum = sum_hours(select_hours(hours, @columns, ''))
         total += sum
-        row << (sum > 0 ? "%.2f" % sum : '')
-      end
       row << "%.2f" %total_est
       row << "%.2f" %total
       csv << row.collect {|c| to_utf8(c) }
@@ -157,7 +156,7 @@ module EstimateTimelogHelper
     export
   end
   
-  def report_criteria_to_csv(csv, criterias, periods, hours, level=0)
+  def report_criteria_to_csv(csv, criterias, issue_cols, hours, level=0)
     hours.collect {|h| h[criterias[level]].to_s}.uniq.each do |value|
       hours_for_value = select_hours(hours, criterias[level], value)
       next if hours_for_value.empty?
@@ -166,20 +165,21 @@ module EstimateTimelogHelper
       row += [''] * (criterias.length - level - 1)
       total_est = 0
       total = 0
-      periods.each do |period|
-        sum_est = sum_hours_est(select_hours(hours_for_value, @columns, period.to_s))
+        sum_est = sum_hours_est(select_hours(hours_for_value, @columns, ''))
         total_est += sum_est
-        row << (sum_est > 0 ? "%.2f" % sum_est : '')
-        sum = sum_hours(select_hours(hours_for_value, @columns, period.to_s))
+        sum = sum_hours(select_hours(hours_for_value, @columns, ''))
         total += sum
-        row << (sum > 0 ? "%.2f" % sum : '')
-      end
       row << "%.2f" %total_est
       row << "%.2f" %total
+      if (criterias.length <= (level+1)) && issue_cols
+        issue_cols.each do |col|
+          row << get_issuescol(hours_for_value, @columns, col)
+        end
+      end
       csv << row
       
       if criterias.length > level + 1
-        report_criteria_to_csv(csv, criterias, periods, hours_for_value, level + 1)
+        report_criteria_to_csv(csv, criterias, issue_cols, hours_for_value, level + 1)
       end
     end
   end

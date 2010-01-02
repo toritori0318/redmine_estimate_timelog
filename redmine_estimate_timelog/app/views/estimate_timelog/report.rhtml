@@ -15,12 +15,8 @@
   <%= hidden_field_tag('project_id', params[:project_id]) if @project %>
   <%= render :partial => 'date_range' %>
 
-  <p><%= l(:label_details) %>: <%= select_tag 'columns', options_for_select([[l(:label_year), 'year'],
-                                                                            [l(:label_month).titleize, 'month']], @columns),
-                                                                            :onchange => "this.form.onsubmit();",
-                                                                            :onclick => "this.blur();"%>
-
-  <%= l(:button_add) %>: <%= select_tag('criterias[]', options_for_select([[]] + (@available_criterias.keys - @criterias).collect{|k| [l(@available_criterias[k][:label]), k]}),
+  <p>
+  <%= l(:button_add) %>: <%= select_tag('criterias[]', options_for_select([[]] + (@available_criterias.keys - @criterias ).collect{|k| [l(@available_criterias[k][:label]), k]}),
                                                           :onchange => "this.form.onsubmit();",
                                                           :style => 'width: 200px',
                                                           :id => nil,
@@ -44,6 +40,8 @@
 <% end %>
 </div>
 
+<% @cache_est = {} %>
+
 <% unless @hours.empty? %>
 <table class="list" id="time-report">
 <thead>
@@ -51,13 +49,13 @@
 <% @criterias.each do |criteria| %>
   <th><%= l(@available_criterias[criteria][:label]) %></th>
 <% end %>
-<% columns_width = (30 / (@periods.length+1)).to_i %>
-<% @periods.each do |period| %>
-  <th class="period" width="<%= columns_width %>%"><%= period %>:<%= l(:et_label_estimated_hours) %></th>
-  <th class="period" width="<%= columns_width %>%"><%= period %>:<%= l(:et_label_hours) %></th>
-<% end %>
-  <th class="total" width="<%= columns_width %>%"><%= l(:et_label_estimated_total) %></th>
-  <th class="total" width="<%= columns_width %>%"><%= l(:et_label_hours_total) %></th>
+  <th class="total" width="10%"><%= l(:et_label_estimated_hours) %></th>
+  <th class="total" width="10%"><%= l(:et_label_hours) %></th>
+  <% if @issue_cols -%>
+    <% @issue_cols.each do |col| -%>
+    <th class="total" width="10%"><%= l(@available_criterias[col][:label]) %></th>
+    <% end -%>
+  <% end -%>
 </tr>
 </thead>
 <tbody>
@@ -67,12 +65,8 @@
   <%= '<td></td>' * (@criterias.size - 1) %>
   <% total_est = 0 -%>
   <% total = 0 -%>
-  <% @periods.each do |period| -%>
-    <% sum_est = sum_hours_est(select_hours(@hours, @columns, period.to_s)); total_est += sum_est -%>
-    <td class="hours"><%= html_hours("%.2f" % sum_est) if sum_est > 0 %></td>
-    <% sum = sum_hours(select_hours(@hours, @columns, period.to_s)); total += sum -%>
-    <td class="hours"><%= html_hours("%.2f" % sum) if sum > 0 %></td>
-  <% end -%>
+    <% sum_est = sum_hours_est(select_hours(@hours, @columns, '')); total_est += sum_est -%>
+    <% sum = sum_hours(select_hours(@hours, @columns, '')); total += sum -%>
   <td class="hours"><%= html_hours("%.2f" % total_est) if total_est > 0 %></td>
   <td class="hours"><%= html_hours("%.2f" % total) if total > 0 %></td>
   </tr>

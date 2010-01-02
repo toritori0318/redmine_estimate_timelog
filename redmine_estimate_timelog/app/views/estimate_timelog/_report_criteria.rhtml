@@ -13,14 +13,16 @@
     <%= '<td></td>' * (criterias.length - level - 1) -%>
     <% total = 0 -%>
     <% total_est = 0 -%>
-    <% @periods.each do |period| -%>
-    <% sum_est = sum_hours_est(select_hours(hours_for_value, @columns, period.to_s)); total_est += sum_est -%>
-    <td class="hours"><%= html_hours("%.2f" % sum_est) if sum_est > 0 %></td>
-    <% sum = sum_hours(select_hours(hours_for_value, @columns, period.to_s)); total += sum -%>
-    <td class="hours"><%= html_hours("%.2f" % sum) if sum > 0 %></td>
-    <% end -%>
+    <% sum_est = sum_hours_est(select_hours(hours_for_value, @columns, '')); total_est += sum_est -%>
     <td class="hours"><%= html_hours("%.2f" % total_est) if total_est > 0 %></td>
+    <% sum = sum_hours(select_hours(hours_for_value, @columns, '')); total += sum -%>
     <td class="hours"><%= html_hours("%.2f" % total) if total > 0 %></td>
+
+    <% if criterias.length <= level+1 && @issue_cols -%>
+      <% @issue_cols.each do |col| -%>
+      <td class="hours"><%= get_issuescol(hours_for_value, @columns, col) %>%</td>
+      <% end -%>
+    <% end -%>
 </tr>
 <% if criterias.length > level+1 -%>
 <%= render(:partial => 'report_criteria', :locals => {:criterias => criterias, :hours => hours_for_value, :level => (level + 1)}) %>

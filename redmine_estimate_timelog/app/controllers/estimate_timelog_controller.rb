@@ -53,7 +53,10 @@ class EstimateTimelogController < ApplicationController
                                            :label => :label_activity},
                              'issue' => {:sql => "issue",
                                          :klass => Issue,
-                                         :label => :label_issue}
+                                         :label => :label_issue},
+                             'done_ratio' => {:sql => "done_ratio",
+                                         :klass => '',
+                                         :label => :et_label_done_ratio}
                            }
 
     @available_criterias_yotei = { 'project' => {:sql => "issues.project_id",
@@ -76,7 +79,10 @@ class EstimateTimelogController < ApplicationController
                                            :label => :label_activity},
                              'issue' => {:sql => "issues.id",
                                          :klass => Issue,
-                                         :label => :label_issue}
+                                         :label => :label_issue},
+                             'done_ratio' => {:sql => "issues.done_ratio",
+                                         :klass => '',
+                                         :label => :et_label_done_ratio}
                            }
 
     @available_criterias_jisseki = { 'project' => {:sql => "time_entries.project_id",
@@ -99,7 +105,10 @@ class EstimateTimelogController < ApplicationController
                                            :label => :label_activity},
                              'issue' => {:sql => "time_entries.issue_id",
                                          :klass => Issue,
-                                         :label => :label_issue}
+                                         :label => :label_issue},
+                             'done_ratio' => {:sql => "issues.done_ratio",
+                                         :klass => '',
+                                         :label => :et_label_done_ratio}
                            }
 
     # Add list and boolean custom fields as available criterias
@@ -126,11 +135,12 @@ class EstimateTimelogController < ApplicationController
     @criterias.uniq!
     @criterias = @criterias[0,3]
 
-    
     @columns = (params[:columns] && %w(year month week day).include?(params[:columns])) ? params[:columns] : 'month'
     
     retrieve_date_range
     
+    @issue_cols = [] 
+
     unless @criterias.empty?
       @column_tbl = ''
       if params[:est_type] == '1' 
@@ -147,10 +157,20 @@ class EstimateTimelogController < ApplicationController
       sql_select_jisseki = @criterias.collect{|criteria| @available_criterias_jisseki[criteria][:sql] + " AS " + criteria}.join(', ')
       sql_group_by_jisseki = @criterias.collect{|criteria| @available_criterias_jisseki[criteria][:sql]}.join(', ')
 
+      if @criterias.index("issue") 
+        @issue_cols = ["done_ratio"]
+          sql_select_all       << ', ' + @issue_cols.collect{|col| @column_tbl +'.'+ @available_criterias[col][:sql] + " AS " + col}.join(', ')
+          sql_group_by_all     << ', ' + @issue_cols.collect{|col| @column_tbl +'.'+ @available_criterias[col][:sql]}.join(', ')
+          sql_select_yotei     << ', ' + @issue_cols.collect{|col| @available_criterias_yotei[col][:sql] + " AS " + col}.join(', ')
+          sql_group_by_yotei   << ', ' + @issue_cols.collect{|col| @available_criterias_yotei[col][:sql]}.join(', ')
+          sql_select_jisseki   << ', ' + @issue_cols.collect{|col| @available_criterias_jisseki[col][:sql] + " AS " + col}.join(', ')
+          sql_group_by_jisseki << ', ' + @issue_cols.collect{|col| @available_criterias_jisseki[col][:sql]}.join(', ')
+      end
+
       sql  = "SELECT "
-      sql << "#{sql_select_all}, #{@column_tbl}.tyear, #{@column_tbl}.tmonth, yotei.hours_est, jisseki.hours "
+      sql << "#{sql_select_all}, yotei.hours_est, jisseki.hours "
       sql << "FROM   "
-      sql << "(SELECT #{sql_select_yotei}, issues.id as issue_id, DATE_FORMAT(start_date,'%Y')  as tyear, DATE_FORMAT(start_date,'%m') as tmonth, '' as tweek,  "
+      sql << "(SELECT #{sql_select_yotei}, issues.id as issue_id, "
       sql << "    '' as spent_on, SUM(estimated_hours) AS hours_est   "
       sql << "    FROM issues  "
       sql << "    LEFT JOIN projects ON issues.project_id = projects.id   "
@@ -158,17 +178,18 @@ class EstimateTimelogController < ApplicationController
       sql << "      AND (%s) " % @project.project_condition(Setting.display_subprojects_issues?) if @project
       sql << "      AND (%s) " % Project.allowed_to_condition(User.current, :view_time_entries)
       if params[:est_type] == '1' 
-        sql << "     AND (start_date BETWEEN '%s' AND '%s')" % [ActiveRecord::Base.connection.quoted_date(@from.to_time), ActiveRecord::Base.connection.quoted_date(@to.to_time)]
+        sql << "     AND (start_date <= '%s' )" % [ActiveRecord::Base.connection.quoted_date(@to.to_time)]
+        sql << "     AND (end_date   >= '%s' )" % [ActiveRecord::Base.connection.quoted_date(@from.to_time)]
         sql << "     AND (issues.assigned_to_id = '%s')" % [User.current.id] if params[:my_type]
       end
-      sql << "    GROUP BY #{sql_group_by_yotei}, issues.id, tyear,tmonth ) yotei "
+      sql << "    GROUP BY #{sql_group_by_yotei}, issues.id) yotei "
       if params[:est_type] == '1' 
         sql << "LEFT  "
       elsif params[:est_type] == '2' 
         sql << "RIGHT "
       end
       sql << "JOIN "
-      sql << "(SELECT #{sql_select_jisseki}, issues.id as issue_id, tyear,tmonth, '' as tweek, '' as spent_on, SUM(hours) AS hours FROM time_entries  LEFT JOIN issues ON time_entries.issue_id = issues.id   "
+      sql << "(SELECT #{sql_select_jisseki}, issues.id as issue_id, '' as spent_on, SUM(hours) AS hours FROM time_entries  LEFT JOIN issues ON time_entries.issue_id = issues.id   "
       sql << "    LEFT JOIN       projects ON issues.project_id = projects.id "
       sql << "      WHERE 1=1"
       sql << "      AND (%s) " % @project.project_condition(Setting.display_subprojects_issues?) if @project
@@ -177,53 +198,19 @@ class EstimateTimelogController < ApplicationController
         sql << "     AND (spent_on BETWEEN '%s' AND '%s')" % [ActiveRecord::Base.connection.quoted_date(@from.to_time), ActiveRecord::Base.connection.quoted_date(@to.to_time)]
         sql << "     AND (time_entries.user_id = '%s')" % [User.current.id] if params[:my_type]
       end
-      sql << "    group by #{sql_group_by_jisseki}, issues.id, tyear,tmonth  ) jisseki "
-      sql << "ON (yotei.tyear=jisseki.tyear AND  yotei.tmonth=jisseki.tmonth AND yotei.issue_id=jisseki.issue_id)  "
+      sql << "    group by #{sql_group_by_jisseki}, issues.id) jisseki "
+      sql << "ON (yotei.issue_id=jisseki.issue_id)  "
       sql << "WHERE yotei.hours_est > 0 OR jisseki.hours > 0 "
 
       @hours = ActiveRecord::Base.connection.select_all(sql)
-
-      @hours.each do |row|
-        case @columns
-        when 'year'
-          row['year'] = row['tyear']
-        when 'month'
-          row['month'] = "#{row['tyear']}-#{row['tmonth']}"
-        when 'week'
-          row['week'] = "#{row['tyear']}-#{row['tweek']}"
-        when 'day'
-          row['day'] = "#{row['spent_on']}"
-        end
-      end
-     
       @total_hours = @hours.inject(0) {|s,k| s = s + k['hours'].to_f}
       @total_hours_est = @hours.inject(0) {|s,k| s = s + k['hours_est'].to_f}
       
-      @periods = []
-      # Date#at_beginning_of_ not supported in Rails 1.2.x
-      date_from = @from.to_time
-      # 100 columns max
-      while date_from <= @to.to_time && @periods.length < 100
-        case @columns
-        when 'year'
-          @periods << "#{date_from.year}"
-          date_from = (date_from + 1.year).at_beginning_of_year
-        when 'month'
-          @periods << "#{date_from.year}-#{date_from.month}"
-          date_from = (date_from + 1.month).at_beginning_of_month
-        when 'week'
-          @periods << "#{date_from.year}-#{date_from.to_date.cweek}"
-          date_from = (date_from + 7.day).at_beginning_of_week
-        when 'day'
-          @periods << "#{date_from.to_date}"
-          date_from = date_from + 1.day
-        end
-      end
     end
     
     respond_to do |format|
       format.html { render :layout => !request.xhr? }
-      format.csv  { send_data(report_to_csv_est(@criterias, @periods, @hours).read, :type => 'text/csv; header=present', :filename => 'timelog.csv') }
+      format.csv  { send_data(report_to_csv_est(@criterias, @issue_cols, @hours).read, :type => 'text/csv; header=present', :filename => 'timelog.csv') }
     end
   end
   
