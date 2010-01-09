@@ -135,7 +135,9 @@ module EstimateTimelogHelper
       headers = criterias.collect {|criteria| l(@available_criterias[criteria][:label]) }
       headers << l(:et_label_estimated_hours)
       headers << l(:et_label_hours)
-      headers << issue_cols.collect {|col| l(@available_criterias[col][:label]) }
+      issue_cols.each do |col|
+        headers << l(@available_criterias[col][:label]) 
+      end
       csv << headers.collect {|c| to_utf8(c) }
       # Content
       report_criteria_to_csv(csv, criterias, issue_cols, hours)

@@ -20,7 +20,7 @@
 
     <% if criterias.length <= level+1 && @issue_cols -%>
       <% @issue_cols.each do |col| -%>
-      <td class="hours"><%= get_issuescol(hours_for_value, @columns, col) %>%</td>
+      <td align="center"><%= get_issuescol(hours_for_value, @columns, col) %></td>
       <% end -%>
     <% end -%>
 </tr>

@@ -16,7 +16,7 @@
   <%= render :partial => 'date_range' %>
 
   <p>
-  <%= l(:button_add) %>: <%= select_tag('criterias[]', options_for_select([[]] + (@available_criterias.keys - @criterias ).collect{|k| [l(@available_criterias[k][:label]), k]}),
+  <%= l(:button_add) %>: <%= select_tag('criterias[]', options_for_select([[]] + (@combobox_criterias.keys - @criterias ).collect{|k| [l(@available_criterias[k][:label]), k]}),
                                                           :onchange => "this.form.onsubmit();",
                                                           :style => 'width: 200px',
                                                           :id => nil,
@@ -24,7 +24,19 @@
                                                           <%= link_to_remote l(:button_clear), {:url => {:project_id => @project, :period_type => params[:period_type], :period => params[:period], :from => @from, :to => @to, :columns => @columns, :est_flg => @est_flg, :my_flg => @my_flg},
                                            :update => 'content'
                                           }, :class => 'icon icon-reload' %></p>
-  <%= check_box_tag 'tmpl_cond', '1' , false, :onchange =>'submit();' %> <%= l(:et_label_tmpl) %>
+  <%= l(:et_label_tmpl) %>: 
+    <%= select_tag(
+        'tmpl_cond', 
+        options_for_select(
+            [ ['',''],
+              [l(:et_label_tmpl_1), '1'], 
+              [l(:et_label_tmpl_2), '2'],
+              [l(:et_label_tmpl_3), '3'],
+              [l(:et_label_tmpl_4), '4']
+            ]
+        ),
+        :onchange => "this.form.onsubmit();"
+    ) %>
 <% end %>
 
 <% unless @criterias.empty? %>
@@ -49,11 +61,11 @@
 <% @criterias.each do |criteria| %>
   <th><%= l(@available_criterias[criteria][:label]) %></th>
 <% end %>
-  <th class="total" width="10%"><%= l(:et_label_estimated_hours) %></th>
-  <th class="total" width="10%"><%= l(:et_label_hours) %></th>
+  <th class="total" width="8%"><%= l(:et_label_estimated_hours) %></th>
+  <th class="total" width="8%"><%= l(:et_label_hours) %></th>
   <% if @issue_cols -%>
     <% @issue_cols.each do |col| -%>
-    <th class="total" width="10%"><%= l(@available_criterias[col][:label]) %></th>
+    <th width="10%"><%= l(@available_criterias[col][:label]) %></th>
     <% end -%>
   <% end -%>
 </tr>

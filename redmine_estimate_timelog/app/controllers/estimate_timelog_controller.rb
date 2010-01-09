@@ -33,6 +33,15 @@ class EstimateTimelogController < ApplicationController
   include IssueRelationsHelper 
  
   def report
+      @combobox_criterias = { 'project' => "project",
+                             'version' => "version",
+                             'category' => "category",
+                             'member' => "member",
+                             'tracker' => "tracker",
+                             'activity' => "activity",
+                             'issue' => "issue",
+                           }
+
       @available_criterias = { 'project' => {:sql => "project",
                                           :klass => Project,
                                           :label => :label_project},
@@ -54,6 +63,12 @@ class EstimateTimelogController < ApplicationController
                              'issue' => {:sql => "issue",
                                          :klass => Issue,
                                          :label => :label_issue},
+                             'start_date' => {:sql => "start_date",
+                                         :klass => '',
+                                         :label => :et_label_start_date},
+                             'due_date' => {:sql => "due_date",
+                                         :klass => '',
+                                         :label => :et_label_due_date},
                              'done_ratio' => {:sql => "done_ratio",
                                          :klass => '',
                                          :label => :et_label_done_ratio}
@@ -80,6 +95,12 @@ class EstimateTimelogController < ApplicationController
                              'issue' => {:sql => "issues.id",
                                          :klass => Issue,
                                          :label => :label_issue},
+                             'start_date' => {:sql => "issues.start_date",
+                                         :klass => '',
+                                         :label => :et_label_start_date},
+                             'due_date' => {:sql => "issues.due_date",
+                                         :klass => '',
+                                         :label => :et_label_due_date},
                              'done_ratio' => {:sql => "issues.done_ratio",
                                          :klass => '',
                                          :label => :et_label_done_ratio}
@@ -106,6 +127,12 @@ class EstimateTimelogController < ApplicationController
                              'issue' => {:sql => "time_entries.issue_id",
                                          :klass => Issue,
                                          :label => :label_issue},
+                             'start_date' => {:sql => "issues.start_date",
+                                         :klass => '',
+                                         :label => :et_label_start_date},
+                             'due_date' => {:sql => "issues.due_date",
+                                         :klass => '',
+                                         :label => :et_label_due_date},
                              'done_ratio' => {:sql => "issues.done_ratio",
                                          :klass => '',
                                          :label => :et_label_done_ratio}
@@ -128,6 +155,12 @@ class EstimateTimelogController < ApplicationController
    
     if params[:tmpl_cond] == '1'
       @criterias = ["member", "activity", "issue"]
+    elsif params[:tmpl_cond] == '2'
+      @criterias = ["member", "issue"]
+    elsif params[:tmpl_cond] == '3'
+      @criterias = ["project", "member", "issue"]
+    elsif params[:tmpl_cond] == '4'
+      @criterias = ["project", "version", "member"]
     else
       @criterias = params[:criterias] || []
     end
@@ -158,7 +191,7 @@ class EstimateTimelogController < ApplicationController
       sql_group_by_jisseki = @criterias.collect{|criteria| @available_criterias_jisseki[criteria][:sql]}.join(', ')
 
       if @criterias.index("issue") 
-        @issue_cols = ["done_ratio"]
+        @issue_cols = ["start_date","due_date","done_ratio"]
           sql_select_all       << ', ' + @issue_cols.collect{|col| @column_tbl +'.'+ @available_criterias[col][:sql] + " AS " + col}.join(', ')
           sql_group_by_all     << ', ' + @issue_cols.collect{|col| @column_tbl +'.'+ @available_criterias[col][:sql]}.join(', ')
           sql_select_yotei     << ', ' + @issue_cols.collect{|col| @available_criterias_yotei[col][:sql] + " AS " + col}.join(', ')
@@ -179,7 +212,7 @@ class EstimateTimelogController < ApplicationController
       sql << "      AND (%s) " % Project.allowed_to_condition(User.current, :view_time_entries)
       if params[:est_type] == '1' 
         sql << "     AND (start_date <= '%s' )" % [ActiveRecord::Base.connection.quoted_date(@to.to_time)]
-        sql << "     AND (end_date   >= '%s' )" % [ActiveRecord::Base.connection.quoted_date(@from.to_time)]
+        sql << "     AND (due_date   >= '%s' )" % [ActiveRecord::Base.connection.quoted_date(@from.to_time)]
         sql << "     AND (issues.assigned_to_id = '%s')" % [User.current.id] if params[:my_type]
       end
       sql << "    GROUP BY #{sql_group_by_yotei}, issues.id) yotei "
@@ -203,6 +236,7 @@ class EstimateTimelogController < ApplicationController
       sql << "WHERE yotei.hours_est > 0 OR jisseki.hours > 0 "
 
       @hours = ActiveRecord::Base.connection.select_all(sql)
+      @hours = @hours.map{|i| i['done_ratio'] = i['done_ratio']+'%' if i.has_key? 'done_ratio'; i}
       @total_hours = @hours.inject(0) {|s,k| s = s + k['hours'].to_f}
       @total_hours_est = @hours.inject(0) {|s,k| s = s + k['hours_est'].to_f}
       
