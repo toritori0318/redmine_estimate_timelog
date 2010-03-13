@@ -1,18 +1,18 @@
 <div class="contextual">
-<%= link_to_if_authorized l(:button_log_time), {:controller => 'estimate_timelog', :action => 'edit', :project_id => @project, :issue_id => @issue}, :class => 'icon icon-time' %>
+<%= link_to_if_authorized l(:button_log_time), {:controller => 'estimate_timelog', :action => 'edit', :project_id => @project, :issue_id => @issue}, :class => 'icon icon-time-add' %>
 </div>
-
 
 <%= render_estimate_timelog_breadcrumb %>
 
-
 <h2><%= l(:label_spent_time) %></h2>
 
-<% form_remote_tag(:url => {}, :update => 'content') do %>
+<% form_remote_tag(:url => {}, :html => {:method => :get, :id => 'query_form'}, :method => :get, :update => 'content') do %>
   <% @criterias.each do |criteria| %>
     <%= hidden_field_tag 'criterias[]', criteria, :id => nil %>
   <% end %>
+  <%# TODO: get rid of the project_id field, that should already be in the URL %>
   <%= hidden_field_tag('project_id', params[:project_id]) if @project %>
+  <%= hidden_field_tag('issue_id', params[:issue_id]) if @issue %>
   <%= render :partial => 'date_range' %>
 
   <p>
@@ -21,7 +21,8 @@
                                                           :style => 'width: 200px',
                                                           :id => nil,
                                                           :disabled => (@criterias.length >= 3)) %>
-                                                          <%= link_to_remote l(:button_clear), {:url => {:project_id => @project, :period_type => params[:period_type], :period => params[:period], :from => @from, :to => @to, :columns => @columns, :est_flg => @est_flg, :my_flg => @my_flg},
+     <%= link_to_remote l(:button_clear), {:url => {:project_id => @project, :period_type => params[:period_type], :period => params[:period], :from => @from, :to => @to, :columns => @columns},
+                                           :method => :get,
                                            :update => 'content'
                                           }, :class => 'icon icon-reload' %></p>
   <%= l(:et_label_tmpl) %>: 
@@ -41,8 +42,8 @@
 
 <% unless @criterias.empty? %>
 <div class="total-hours">
-<p><%= l(:et_label_estimated_total) %>: <%= html_hours(lwr(:label_f_hour, @total_hours_est)) %></p>
-<p><%= l(:et_label_hours_total) %>: <%= html_hours(lwr(:label_f_hour, @total_hours)) %></p>
+<p><%= l(:et_label_estimated_total) %>: <%= html_hours(l_hours(@total_hours_est)) %></p>
+<p><%= l(:et_label_hours_total) %>: <%= html_hours(l_hours(@total_hours)) %></p>
 <% disp_criterias = [] %>
 <% @criterias.each do |criteria| %>
   <% disp_criterias.push(l(@available_criterias[criteria][:label])) %>
@@ -59,7 +60,7 @@
 <thead>
 <tr>
 <% @criterias.each do |criteria| %>
-  <th><%= l(@available_criterias[criteria][:label]) %></th>
+  <th><%= l_or_humanize(@available_criterias[criteria][:label]) %></th>
 <% end %>
   <th class="total" width="8%"><%= l(:et_label_estimated_hours) %></th>
   <th class="total" width="8%"><%= l(:et_label_hours) %></th>
@@ -85,10 +86,10 @@
 </tbody>
 </table>
 
-<p class="other-formats">
-<%= l(:label_export_to) %>
-<span><%= link_to 'CSV', params.merge({:format => 'csv'}), :class => 'csv' %></span>
-</p>
+<% other_formats_links do |f| %>
+	<%= f.link_to 'CSV', :url => params %>
+<% end %>
+
 <% end %>
 <% end %>
 

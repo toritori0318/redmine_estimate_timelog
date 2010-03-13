@@ -1,0 +1,19 @@
+ja:
+  et_label_menu: 予定／実績レポート
+  et_label_estimated_hours: 予定工数
+  et_label_hours: 実績工数
+  et_label_estimated_total: 予定合計
+  et_label_hours_total: 実績合計
+  et_label_radio_estimated: 予定ベース 
+  et_label_radio_hours: 実績ベース 
+  et_label_base_summary: 集計ベース 
+  et_label_mine: 自分のレポートのみ表示 
+  et_label_tmpl: レポートテンプレート 
+  et_label_tmpl_1: メンバー＞活動＞チケット 
+  et_label_tmpl_2: メンバー＞チケット 
+  et_label_tmpl_3: プロジェクト＞メンバー＞チケット 
+  et_label_tmpl_4: プロジェクト＞バージョン＞メンバー 
+  
+  et_label_start_date: 開始日
+  et_label_due_date: 期限日
+  et_label_done_ratio: 進捗

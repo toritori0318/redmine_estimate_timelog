@@ -22,14 +22,31 @@ module EstimateTimelogHelper
     links = []
     links << link_to(l(:label_project_all), {:project_id => nil, :issue_id => nil})
     links << link_to(h(@project), {:project_id => @project, :issue_id => nil}) if @project
-    links << link_to_issue(@issue) if @issue
+    if @issue
+      if @issue.visible?
+        links << link_to_issue(@issue, :subject => false)
+      else
+        links << "##{@issue.id}"
+      end
+    end
     breadcrumb links
   end
   
-  def activity_collection_for_select_options
-    activities = Enumeration::get_values('ACTI')
+  # is active.
+  def activity_collection_for_select_options(time_entry=nil, project=nil)
+    project ||= @project
+    if project.nil?
+      activities = TimeEntryActivity.shared.active
+    else
+      activities = project.activities
+    end
+
     collection = []
-    collection << [ "--- #{l(:actionview_instancetag_blank_option)} ---", '' ] unless activities.detect(&:is_default)
+    if time_entry && time_entry.activity && !time_entry.activity.active?
+      collection << [ "--- #{l(:actionview_instancetag_blank_option)} ---", '' ]
+    else
+      collection << [ "--- #{l(:actionview_instancetag_blank_option)} ---", '' ] unless activities.detect(&:is_default)
+    end
     activities.each { |a| collection << [a.name, a.id] }
     collection
   end
@@ -84,8 +101,7 @@ module EstimateTimelogHelper
     ic = Iconv.new(l(:general_csv_encoding), 'UTF-8')    
     decimal_separator = l(:general_csv_decimal_separator)
     custom_fields = TimeEntryCustomField.find(:all)
-    export = StringIO.new
-    CSV::Writer.generate(export, l(:general_csv_separator)) do |csv|
+    export = FCSV.generate(:col_sep => l(:general_csv_separator)) do |csv|
       # csv header fields
       headers = [l(:field_spent_on),
                  l(:field_user),
@@ -120,17 +136,26 @@ module EstimateTimelogHelper
         csv << fields.collect {|c| begin; ic.iconv(c.to_s); rescue; c.to_s; end }
       end
     end
-    export.rewind
     export
   end
   
   def format_criteria_value(criteria, value)
-    value.blank? ? l(:label_none) : ((k = @available_criterias[criteria][:klass]) ? k.find_by_id(value.to_i) : format_value(value, @available_criterias[criteria][:format]))
+    if value.blank?
+      l(:label_none)
+    elsif k = @available_criterias[criteria][:klass]
+      obj = k.find_by_id(value.to_i)
+      if obj.is_a?(Issue)
+        obj.visible? ? "#{obj.tracker} ##{obj.id}: #{obj.subject}" : "##{obj.id}"
+      else
+        obj
+      end
+    else
+      format_value(value, @available_criterias[criteria][:format])
+    end
   end
   
   def report_to_csv_est(criterias, issue_cols, hours)
-    export = StringIO.new
-    CSV::Writer.generate(export, l(:general_csv_separator)) do |csv|
+    export = FCSV.generate(:col_sep => l(:general_csv_separator)) do |csv|
       # Column headers
       headers = criterias.collect {|criteria| l(@available_criterias[criteria][:label]) }
       headers << l(:et_label_estimated_hours)
@@ -154,7 +179,6 @@ module EstimateTimelogHelper
       csv << row.collect {|c| to_utf8(c) }
       #csv << row
     end
-    export.rewind
     export
   end
   

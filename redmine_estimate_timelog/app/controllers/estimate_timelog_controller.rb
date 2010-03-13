@@ -58,7 +58,7 @@ class EstimateTimelogController < ApplicationController
                                           :klass => Tracker,
                                           :label => :label_tracker},
                              'activity' => {:sql => "activity",
-                                           :klass => Enumeration,
+                                           :klass => TimeEntryActivity,
                                            :label => :label_activity},
                              'issue' => {:sql => "issue",
                                          :klass => Issue,
@@ -90,7 +90,7 @@ class EstimateTimelogController < ApplicationController
                                           :klass => Tracker,
                                           :label => :label_tracker},
                              'activity' => {:sql => "''",
-                                           :klass => Enumeration,
+                                           :klass => TimeEntryActivity,
                                            :label => :label_activity},
                              'issue' => {:sql => "issues.id",
                                          :klass => Issue,
@@ -122,7 +122,7 @@ class EstimateTimelogController < ApplicationController
                                           :klass => Tracker,
                                           :label => :label_tracker},
                              'activity' => {:sql => "time_entries.activity_id",
-                                           :klass => Enumeration,
+                                           :klass => TimeEntryActivity,
                                            :label => :label_activity},
                              'issue' => {:sql => "time_entries.issue_id",
                                          :klass => Issue,
@@ -149,6 +149,13 @@ class EstimateTimelogController < ApplicationController
     # Add list and boolean time entry custom fields
     TimeEntryCustomField.find(:all).select {|cf| %w(list bool).include? cf.field_format }.each do |cf|
       @available_criterias["cf_#{cf.id}"] = {:sql => "(SELECT c.value FROM #{CustomValue.table_name} c WHERE c.custom_field_id = #{cf.id} AND c.customized_type = 'TimeEntry' AND c.customized_id = #{TimeEntry.table_name}.id)",
+                                             :format => cf.field_format,
+                                             :label => cf.name}
+    end
+
+    # Add list and boolean time entry activity custom fields
+    TimeEntryActivityCustomField.find(:all).select {|cf| %w(list bool).include? cf.field_format }.each do |cf|
+      @available_criterias["cf_#{cf.id}"] = {:sql => "(SELECT c.value FROM #{CustomValue.table_name} c WHERE c.custom_field_id = #{cf.id} AND c.customized_type = 'Enumeration' AND c.customized_id = #{TimeEntry.table_name}.activity_id)",
                                              :format => cf.field_format,
                                              :label => cf.name}
     end
@@ -244,7 +251,7 @@ class EstimateTimelogController < ApplicationController
     
     respond_to do |format|
       format.html { render :layout => !request.xhr? }
-      format.csv  { send_data(report_to_csv_est(@criterias, @issue_cols, @hours).read, :type => 'text/csv; header=present', :filename => 'timelog.csv') }
+      format.csv  { send_data(report_to_csv_est(@criterias, @issue_cols, @hours), :type => 'text/csv; header=present', :filename => 'timelog.csv') }
     end
   end
   
@@ -304,7 +311,7 @@ class EstimateTimelogController < ApplicationController
                                               :include => [:project, :activity, :user, {:issue => [:tracker, :assigned_to, :priority]}],
                                               :conditions => cond.conditions,
                                               :order => sort_clause)
-                                              send_data(entries_to_csv(@entries).read, :type => 'text/csv; header=present', :filename => 'timelog.csv')
+                                              send_data(entries_to_csv(@entries), :type => 'text/csv; header=present', :filename => 'timelog.csv')
                 }
             end
         end
@@ -369,8 +376,8 @@ class EstimateTimelogController < ApplicationController
   end
   
   def edit
-    render_403 and return if @time_entry && !@time_entry.editable_by?(User.current)
-    @time_entry ||= TimeEntry.new(:project => @project, :issue => @issue, :user => User.current, :spent_on => Date.today)
+    (render_403; return) if @time_entry && !@time_entry.editable_by?(User.current)
+    @time_entry ||= TimeEntry.new(:project => @project, :issue => @issue, :user => User.current, :spent_on => User.current.today)
     @time_entry.attributes = params[:time_entry]
     
     call_hook(:controller_estimate_timelog_edit_before_save, { :params => params, :time_entry => @time_entry })
@@ -383,8 +390,8 @@ class EstimateTimelogController < ApplicationController
   end
   
   def destroy
-    render_404 and return unless @time_entry
-    render_403 and return unless @time_entry.editable_by?(User.current)
+    (render_404; return) unless @time_entry
+    (render_403; return) unless @time_entry.editable_by?(User.current)
     @time_entry.destroy
     flash[:notice] = l(:notice_successful_delete)
     redirect_to :back
