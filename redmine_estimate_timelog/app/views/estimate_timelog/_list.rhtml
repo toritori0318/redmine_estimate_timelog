@@ -22,7 +22,7 @@
   <td class="project"><%=h entry.project %></td>
   <td class="subject">
   <% if entry.issue -%>
-  <%= link_to_issue entry.issue %>: <%= h(truncate(entry.issue.subject, 50)) -%>
+      <%= link_to_issue entry.issue %>: <%= h(truncate(entry.issue.subject, :length => 50)) -%>
   <% end -%>
   </td>
   <td class="comments"><%=h entry.comments %></td>
@@ -48,7 +48,7 @@
   <td class="activity">-</td>
   <td class="project"><%=h entry.project.name if entry.project.name %></td>
   <td class="subject">
-  <%= link_to_issue entry %>: <%= h(truncate(entry.subject, 50)) -%>
+      <%= link_to_issue entry %>: <%= h(truncate(entry.subject, :length => 50)) -%>
   </td>
   <td class="comments">-</td>
   <td class="hours"><%= html_hours("%.2f" % entry.estimated_hours) if entry.estimated_hours %></td>

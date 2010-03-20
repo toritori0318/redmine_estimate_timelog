@@ -338,7 +338,6 @@ class EstimateTimelogController < ApplicationController
 
         cond << ['start_date BETWEEN ? AND ?', @from, @to]
 
-        Issue.visible_by(User.current) do
             respond_to do |format|
                 format.html {
                     # Paginate results
@@ -371,7 +370,6 @@ class EstimateTimelogController < ApplicationController
                                               send_data(entries_to_csv(@entries).read, :type => 'text/csv; header=present', :filename => 'timelog.csv')
                 }
             end
-        end
     end
   end
   
