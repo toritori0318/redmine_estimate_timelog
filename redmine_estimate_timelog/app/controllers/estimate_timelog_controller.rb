@@ -219,7 +219,7 @@ class EstimateTimelogController < ApplicationController
       sql << "      AND (%s) " % Project.allowed_to_condition(User.current, :view_time_entries)
       if params[:est_type] == '1' 
         sql << "     AND (start_date <= '%s' )" % [ActiveRecord::Base.connection.quoted_date(@to.to_time)]
-        sql << "     AND (due_date   >= '%s' )" % [ActiveRecord::Base.connection.quoted_date(@from.to_time)]
+        sql << "     AND (due_date is null OR due_date   >= '%s' )" % [ActiveRecord::Base.connection.quoted_date(@from.to_time)]
         sql << "     AND (issues.assigned_to_id = '%s')" % [User.current.id] if params[:my_type]
       end
       sql << "    GROUP BY #{sql_group_by_yotei}, issues.id) yotei "
@@ -336,7 +336,9 @@ class EstimateTimelogController < ApplicationController
             cond << ["#{Issue.table_name}.assigned_to_id = ?", User.current.id]
         end
 
-        cond << ['start_date BETWEEN ? AND ?', @from, @to]
+        sql << "     AND (start_date <= '%s' )" % [ActiveRecord::Base.connection.quoted_date(@to.to_time)]
+        sql << "     AND (due_date is null OR due_date   >= '%s' )" % [ActiveRecord::Base.connection.quoted_date(@from.to_time)]
+        cond << ['(start_date <= ?) AND (due_date is null OR due_date   >= ? ) ', @from, @to]
 
             respond_to do |format|
                 format.html {
