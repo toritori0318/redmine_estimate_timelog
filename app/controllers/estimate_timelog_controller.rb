@@ -22,6 +22,7 @@ class EstimateTimelogController < ApplicationController
   before_filter :find_project, :authorize, :only => [:edit, :destroy]
   before_filter :find_optional_project, :only => [:report, :details]
 
+  # rails3: need git://github.com/rails/verification.git
   verify :method => :post, :only => :destroy, :redirect_to => { :action => :details }
 
   helper :sort
