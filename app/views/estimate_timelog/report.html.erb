@@ -6,7 +6,9 @@
 
 <h2><%= l(:label_spent_time) %></h2>
 
-<% form_remote_tag(:url => {}, :html => {:method => :get, :id => 'query_form'}, :method => :get, :update => 'content') do %>
+<%= form_tag({:controller => 'estimate_timelog', :action => 'report',
+              :project_id => @project, :issue_id => @issue},
+            :method => :get, :id => 'query_form') do %>
   <% @criterias.each do |criteria| %>
     <%= hidden_field_tag 'criterias[]', criteria, :id => nil %>
   <% end %>
@@ -16,15 +18,12 @@
   <%= render :partial => 'date_range' %>
 
   <p>
-  <%= l(:button_add) %>: <%= select_tag('criterias[]', options_for_select([[]] + (@combobox_criterias.keys - @criterias ).collect{|k| [l(@available_criterias[k][:label]), k]}),
-                                                          :onchange => "this.form.onsubmit();",
+  <label for='criterias'><%= l(:button_add) %></label>: <%= select_tag('criterias[]', options_for_select([[]] + (@combobox_criterias.keys - @criterias).collect{|k| [l(@available_criterias[k][:label]), k]}),
+                                                          :onchange => "this.form.submit();",
                                                           :style => 'width: 200px',
                                                           :id => nil,
-                                                          :disabled => (@criterias.length >= 3)) %>
-     <%= link_to_remote l(:button_clear), {:url => {:project_id => @project, :period_type => params[:period_type], :period => params[:period], :from => @from, :to => @to, :columns => @columns},
-                                           :method => :get,
-                                           :update => 'content'
-                                          }, :class => 'icon icon-reload' %></p>
+                                                          :disabled => (@criterias.length >= 3), :id => "criterias") %>
+    <%= link_to l(:button_clear), {:project_id => @project, :issue_id => @issue, :period_type => params[:period_type], :period => params[:period], :from => @from, :to => @to, :est_type => params[:est_type], :my_type => params[:my_type], :columns => @columns}, :class => 'icon icon-reload' %></p>
   <%= l(:et_label_tmpl) %>: 
     <%= select_tag(
         'tmpl_cond', 
@@ -36,7 +35,7 @@
               [l(:et_label_tmpl_4), '4']
             ]
         ),
-        :onchange => "this.form.onsubmit();"
+        :onchange => "this.form.submit();"
     ) %>
 <% end %>
 
@@ -56,6 +55,7 @@
 <% @cache_est = {} %>
 
 <% unless @hours.empty? %>
+<div class="autoscroll">
 <table class="list" id="time-report">
 <thead>
 <tr>
@@ -75,7 +75,7 @@
 <%= render :partial => 'report_criteria', :locals => {:criterias => @criterias, :hours => @hours, :level => 0} %>
   <tr class="total">
   <td><%= l(:label_total) %></td>
-  <%= '<td></td>' * (@criterias.size - 1) %>
+  <%= ('<td></td>' * (@criterias.size - 1)).html_safe %>
   <% total_est = 0 -%>
   <% total = 0 -%>
     <% sum_est = sum_hours_est(select_hours(@hours, @columns, '')); total_est += sum_est -%>
@@ -85,11 +85,11 @@
   </tr>
 </tbody>
 </table>
+</div>
 
 <% other_formats_links do |f| %>
 	<%= f.link_to 'CSV', :url => params %>
 <% end %>
-
 <% end %>
 <% end %>
 

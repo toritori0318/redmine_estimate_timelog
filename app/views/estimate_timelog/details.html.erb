@@ -6,7 +6,8 @@
 
 <h2><%= l(:label_spent_time) %></h2>
 
-<% form_remote_tag( :url => {}, :html => {:method => :get, :id => 'query_form'}, :method => :get, :update => 'content' ) do %>
+<%# form_remote_tag( :url => {}, :html => {:method => :get, :id => 'query_form'}, :method => :get, :update => 'content', :remote=>true ) do %>
+<%= form_tag({:controller => 'estimate_timelog', :action => 'details', :project_id => @project, :issue_id => @issue}, :method => :get, :id => 'query_form') do %>
 <%# TOOD: remove the project_id and issue_id hidden fields, that information is
 already in the URI %>
 <%= hidden_field_tag('project_id', params[:project_id]) if @project %>
