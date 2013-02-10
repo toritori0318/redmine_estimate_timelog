@@ -211,42 +211,62 @@ class EstimateTimelogController < ApplicationController
       end
 
       sql  = "SELECT "
-      sql << "#{sql_select_all}, yotei.hours_est, jisseki.hours "
+      if params[:est_type] == '1'
+        sql << "#{sql_select_all}, sum(if(child_cnt = 0, yotei.hours_est, 0)) hours_est,"
+        sql << "sum(if(child_cnt != 0, yotei.hours_est, 0)) hours_est_all, "
+        sql << "sum(if(child_cnt = 0, yotei.hours, 0)) hours, "
+        sql << "sum(if(child_cnt != 0, yotei.hours, 0)) hours_all "
+      elsif params[:est_type] == '2'
+        sql << "#{sql_select_all}, yotei.hours_est hours_est, jisseki.hours "
+      end
       sql << "FROM   "
       sql << "(SELECT #{sql_select_yotei}, issues.id as issue_id, "
-      sql << "    '' as spent_on, SUM(estimated_hours) AS hours_est   "
+      sql << "    '' as spent_on, SUM(estimated_hours) AS hours_est, 0 AS hours,   "
+      sql << "    (select count(*) from issues wk where wk.parent_id = issues.id) child_cnt "
       sql << "    FROM issues  "
       sql << "    LEFT JOIN projects ON issues.project_id = projects.id   "
       sql << "      WHERE 1=1"
       sql << "      AND (%s) " % @project.project_condition(Setting.display_subprojects_issues?) if @project
       sql << "      AND (%s) " % Project.allowed_to_condition(User.current, :view_time_entries)
       if params[:est_type] == '1'
-        sql << "     AND (start_date <= '%s' )" % [ActiveRecord::Base.connection.quoted_date(@to.to_time)]
-        sql << "     AND (due_date   >= '%s' )" % [ActiveRecord::Base.connection.quoted_date(@from.to_time)]
+        if (!@period_all)
+          sql << "     AND (start_date <= '%s')" % [ActiveRecord::Base.connection.quoted_date(@to.to_time)]
+          sql << "     AND (due_date   >= '%s')" % [ActiveRecord::Base.connection.quoted_date(@from.to_time)]
+        end
         sql << "     AND (issues.assigned_to_id = '%s')" % [User.current.id] if params[:my_type]
       end
-      sql << "    GROUP BY #{sql_group_by_yotei}, issues.id) yotei "
+      sql << "    GROUP BY #{sql_group_by_yotei}, issues.id"
       if params[:est_type] == '1'
-        sql << "LEFT  "
+        sql << " UNION ALL  "
       elsif params[:est_type] == '2'
-        sql << "RIGHT "
+        sql << ") yotei "
+        sql << "RIGHT JOIN ("
       end
-      sql << "JOIN "
-      sql << "(SELECT #{sql_select_jisseki}, issues.id as issue_id, '' as spent_on, SUM(hours) AS hours FROM time_entries  LEFT JOIN issues ON time_entries.issue_id = issues.id   "
+      sql << "SELECT #{sql_select_jisseki}, issues.id as issue_id, '' as spent_on, '' as hours_est, SUM(hours) AS hours, 0 child_cnt "
+      sql << " FROM time_entries  LEFT JOIN issues ON time_entries.issue_id = issues.id   "
       sql << "    LEFT JOIN       projects ON issues.project_id = projects.id "
       sql << "      WHERE 1=1"
       sql << "      AND (%s) " % @project.project_condition(Setting.display_subprojects_issues?) if @project
       sql << "      AND (%s) " % Project.allowed_to_condition(User.current, :view_time_entries)
       if params[:est_type] == '2'
-        sql << "     AND (spent_on BETWEEN '%s' AND '%s')" % [ActiveRecord::Base.connection.quoted_date(@from.to_time), ActiveRecord::Base.connection.quoted_date(@to.to_time)]
+        if (!@period_all)
+          sql << "     AND (spent_on BETWEEN '%s' AND '%s')" % [ActiveRecord::Base.connection.quoted_date(@from.to_time), ActiveRecord::Base.connection.quoted_date(@to.to_time)]
+        end
         sql << "     AND (time_entries.user_id = '%s')" % [User.current.id] if params[:my_type]
       end
-      sql << "    group by #{sql_group_by_jisseki}, issues.id) jisseki "
-      sql << "ON (yotei.issue_id=jisseki.issue_id)  "
-      sql << "WHERE yotei.hours_est > 0 OR jisseki.hours > 0 "
+      sql << "    group by #{sql_group_by_jisseki}, issues.id "
+      if params[:est_type] == '1'
+        sql << "    ) yotei "
+        sql << "WHERE yotei.hours_est > 0 OR yotei.hours > 0 "
+        sql << "group by #{sql_group_by_all}"
+      elsif params[:est_type] == '2'
+        sql << "    ) jisseki "
+        sql << "ON (yotei.issue_id=jisseki.issue_id)  "
+        sql << "WHERE yotei.hours_est > 0 OR jisseki.hours > 0 "
+      end
 
       @hours = ActiveRecord::Base.connection.select_all(sql)
-      @hours = @hours.map{|i| i['done_ratio'] = i['done_ratio']+'%' if i.has_key? 'done_ratio'; i}
+      @hours = @hours.map{|i| i['done_ratio'] = i['done_ratio'].to_s+'%' if i.has_key? 'done_ratio'; i}
       @total_hours = @hours.inject(0) {|s,k| s = s + k['hours'].to_f}
       @total_hours_est = @hours.inject(0) {|s,k| s = s + k['hours_est'].to_f}
 
@@ -266,7 +286,7 @@ class EstimateTimelogController < ApplicationController
         sort_init 'spent_on', 'desc'
         sort_update 'spent_on' => 'spent_on',
             'user' => 'user_id',
-            'activity' => 'activity_id',
+            'activity' => "#{TimeEntry.table_name}.activity_id",
             'project' => "#{Project.table_name}.name",
             'issue' => 'issue_id',
             'hours' => 'hours'
@@ -319,10 +339,10 @@ class EstimateTimelogController < ApplicationController
     elsif @est_flg
         sort_init 'start_date', 'desc'
         sort_update 'start_date' => 'start_date',
-            'user' => 'user_id',
-            'activity' => 'activity_id',
+            'author' => 'assigned_to_id',
+            # 'activity' => "#{TimeEntry.table_name}.activity_id",
             'project' => "#{Project.table_name}.name",
-            'issue' => 'issue_id',
+            'issue' => "#{Issue.table_name}.id",
             'estimated_hours' => 'estimated_hours'
         cond = ARCondition.new
         if @project.nil?
@@ -337,7 +357,9 @@ class EstimateTimelogController < ApplicationController
             cond << ["#{Issue.table_name}.assigned_to_id = ?", User.current.id]
         end
 
-        cond << ['(start_date <= ?) AND (due_date   >= ? ) ', @to, @from]
+        if (!@period_all)
+          cond << ['(start_date <= ?) AND (due_date   >= ?) ', @to, @from]
+        end
 
         respond_to do |format|
             format.html {
@@ -345,8 +367,7 @@ class EstimateTimelogController < ApplicationController
                 @entry_count = Issue.count(:include => :project, :conditions => cond.conditions)
                 @entry_pages = Paginator.new self, @entry_count, per_page_option, params['page']
                 @entries = Issue.find(:all,
-                                          :include => [:project, :author ],
-                                          #:include => [:project, :user ],
+                                          :include => [:project, :assigned_to],
                                           :conditions => cond.conditions,
                                           :order => sort_clause,
                                           :limit  =>  @entry_pages.items_per_page,
@@ -356,7 +377,7 @@ class EstimateTimelogController < ApplicationController
             }
             format.atom {
                 entries = Issue.find(:all,
-                                         :include => [:project, :author],
+                                         :include => [:project, :assigned_to],
                                          :conditions => cond.conditions,
                                          :order => "#{Issue.table_name}.created_on DESC",
                                          :limit => Setting.feeds_limit.to_i)
@@ -365,7 +386,7 @@ class EstimateTimelogController < ApplicationController
             format.csv {
                 # Export all entries
                 @entries = Issue.find(:all,
-                                          :include => [:project, :author],
+                                          :include => [:project, :assigned_to],
                                           :conditions => cond.conditions,
                                           :order => sort_clause)
                                           send_data(entries_to_csv(@entries).read, :type => 'text/csv; header=present', :filename => 'timelog.csv')
@@ -430,6 +451,7 @@ private
   def retrieve_date_range
     @free_period = false
     @from, @to = nil, nil
+    @period_all = false;
 
     if params[:period_type] == '1' || (params[:period_type].nil? && !params[:period].nil?)
       case params[:period].to_s
@@ -458,6 +480,8 @@ private
       when 'current_year'
         @from = Date.civil(Date.today.year, 1, 1)
         @to = Date.civil(Date.today.year, 12, 31)
+      when 'all'
+        @period_all = true
       end
     elsif params[:period_type] == '2' || (params[:period_type].nil? && (!params[:from].nil? || !params[:to].nil?))
       begin; @from = params[:from].to_s.to_date unless params[:from].blank?; rescue; end
@@ -468,10 +492,10 @@ private
     end
 
     @from, @to = @to, @from if @from && @to && @from > @to
-    @from ||= (TimeEntry.minimum(:spent_on, :include => :project, :conditions => Project.allowed_to_condition(User.current, :view_time_entries)) || Date.today) - 1
-    @to   ||= (TimeEntry.maximum(:spent_on, :include => :project, :conditions => Project.allowed_to_condition(User.current, :view_time_entries)) || Date.today)
+    @from ||= (Issue.minimum(:start_date, :include => :project, :conditions => Project.allowed_to_condition(User.current, :view_time_entries)) || Date.today) - 1
+    @to   ||= (Issue.maximum(:due_date, :include => :project, :conditions => Project.allowed_to_condition(User.current, :view_time_entries)) || Date.today)
 
-    if params[:est_type] == '1' || params[:est_flg] == "true"
+    if params[:est_type] == '1' || params[:est_flg] == "true" || params[:est_type] == nil
       @est_flg = true
     elsif params[:est_type] == '2' || params[:est_flg] == "false"
       @est_flg = false
