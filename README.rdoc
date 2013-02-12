@@ -21,11 +21,14 @@ Redmine-1.2.x以下のバージョンをお使いの方は
 
 redmine_estimate_timelogフォルダをまるごと
 
-path/to/redmine/plugin
+/path-to-redmine-root/plugin
 
 に解凍し、Redmineを再起動するだけでOKです。
 
 dbのmigretionは必要ありません。
+
+= 必須プラグイン
+v0.5.0 から [verification](git://github.com/rails/verification.git) 必要です。
 
 = 使い方
 
@@ -37,17 +40,20 @@ dbのmigretionは必要ありません。
 
 以下のリンクを参照ください。
 
+- http://d.zeromemory.info/2013/02/13/redmine-estimate_timelog-v0-5-0.html
 - http://d.hatena.ne.jp/toritori0318/20100320/1269108560
 - http://d.hatena.ne.jp/toritori0318/20091128/1259429374
 
 = バージョン
 == version 0.5.0
-- Rails3 に対応。Redmine は 2.x 以上じゃないとダメかも。
+- Redmine 2.x系(Rails3) に対応。
 - レポートの「予定ベース」の出力を実質「予定/実績ベース」に変更。
-
-(Left Join から Union へ)
+- 子チケットが存在する予定工数は工数として集計しない。(Redmineにより集計されて二重カウントになるため)
+- 「全期間」を指定した場合、日付の範囲指定をしないようにした。(日付未設定も表示するため)
 
 == version 0.4.0
+
+- Redmine 1.4 対応
 
 == version 0.3.0
 
@@ -91,8 +97,6 @@ dbのmigretionは必要ありません。
 - レポートで「チケット階層」表示時に、チケットへのリンクが出来るように対応
 - csvのヘッダー表示バグ対応
 - csvのヘッダー年月表示を、htmlと同じ表示に変更
-
-
 
 == version 0.0.3
 
