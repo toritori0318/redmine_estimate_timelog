@@ -43,11 +43,12 @@
 </div>
 </fieldset>
 
-<fieldset id="tantoe-range" class="collapsible">
-<legend onclick="toggleFieldset(this);"><%= l(:field_assigned_to) %></legend>
+<fieldset id="option-range" class="collapsible">
+<legend onclick="toggleFieldset(this);"><%= l(:et_label_options) %></legend>
 <div>
  <p>
-   <%=  check_box_tag 'my_type', User.current.id ,@mine_flg %> <%= l(:et_label_mine) %>
+ <%=  check_box_tag 'my_type', User.current.id, @mine_flg %> <%= l(:et_label_mine) %><br>
+ <%=  check_box_tag 'without_closed', '1', @without_closed_flg %> <%= l(:et_label_without_closed) %>
  </p>
 </div>
 </fieldset>
@@ -59,8 +60,9 @@
 
 <div class="tabs">
 <% url_params = @free_period ? { :from => @from, :to => @to } : { :period => params[:period] } %>
-<% url_params['est_flg'] = @est_flg if @est_flg %>
+<% url_params['est_flg'] = @est_flg if !@est_flg %>
 <% url_params['mine_flg'] = @mine_flg if @mine_flg %>
+<% url_params['without_closed'] = @without_closed_flg if @without_closed_flg %>
 <ul>
     <li><%= link_to(l(:label_details), url_params.merge({:controller => 'estimate_timelog', :action => 'details', :project_id => @project }),
                                        :class => (controller.action_name == 'details' ? 'selected' : nil)) %></li>

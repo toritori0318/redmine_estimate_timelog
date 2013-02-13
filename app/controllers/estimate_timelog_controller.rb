@@ -451,7 +451,8 @@ private
   def retrieve_date_range
     @free_period = false
     @from, @to = nil, nil
-    @period_all = false;
+    @period_all = false
+    @without_closed_flg = false
 
     if params[:period_type] == '1' || (params[:period_type].nil? && !params[:period].nil?)
       case params[:period].to_s
@@ -495,12 +496,15 @@ private
     @from ||= (Issue.minimum(:start_date, :include => :project, :conditions => Project.allowed_to_condition(User.current, :view_time_entries)) || Date.today) - 1
     @to   ||= (Issue.maximum(:due_date, :include => :project, :conditions => Project.allowed_to_condition(User.current, :view_time_entries)) || Date.today)
 
-    if params[:est_type] == '1' || params[:est_flg] == "true" || params[:est_type] == nil
+    if params[:est_type] == '1' || params[:est_flg] == "true"
       @est_flg = true
     elsif params[:est_type] == '2' || params[:est_flg] == "false"
       @est_flg = false
+    else
+      @est_flg = false
     end
     @mine_flg = params[:my_type] || params[:mine_flg]
+    @without_closed_flg = params[:without_closed]
   end
 
 end
