@@ -147,9 +147,21 @@ module EstimateTimelogHelper
     export
   end
 
-  def format_criteria_value(criteria, value)
+  # yet issue only
+  def abstract_obj_from_criterias(criteria, value)
+    if !value.blank? && k = @available_criterias[criteria][:klass]
+      obj = k.find_by_id(value.to_i)
+      if obj.is_a?(Issue)
+        obj
+      end
+    end
+  end
+
+  def format_criteria_value(criteria, value, obj = nil)
     if value.blank?
       l(:label_none)
+    elsif obj.is_a?(Issue)
+        obj.visible? ? "#{obj.tracker} ##{obj.id}: #{obj.subject}" : "##{obj.id}"
     elsif k = @available_criterias[criteria][:klass]
       obj = k.find_by_id(value.to_i)
       if obj.is_a?(Issue)
