@@ -62,7 +62,7 @@
 <% url_params = @free_period ? { :from => @from, :to => @to } : { :period => params[:period] } %>
 <% url_params['est_flg'] = @est_flg if !@est_flg %>
 <% url_params['mine_flg'] = @mine_flg if @mine_flg %>
-<% url_params['without_closed'] = @without_closed_flg if @without_closed_flg %>
+<% url_params['without_closed'] = @without_closed_flg if !@without_closed_flg %>
 <ul>
     <li><%= link_to(l(:label_details), url_params.merge({:controller => 'estimate_timelog', :action => 'details', :project_id => @project }),
                                        :class => (controller.action_name == 'details' ? 'selected' : nil)) %></li>

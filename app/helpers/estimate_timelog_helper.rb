@@ -128,17 +128,32 @@ module EstimateTimelogHelper
       csv << headers.collect {|c| begin; ic.iconv(c.to_s); rescue; c.to_s; end }
       # csv lines
       entries.each do |entry|
-        fields = [format_date(entry.spent_on),
-                  entry.user,
-                  entry.activity,
-                  entry.project,
-                  (entry.issue ? entry.issue.id : nil),
-                  (entry.issue ? entry.issue.tracker : nil),
-                  (entry.issue ? entry.issue.subject : nil),
-                  entry.issue.estimated_hours.to_s.gsub('.', decimal_separator),
-                  entry.hours.to_s.gsub('.', decimal_separator),
-                  entry.comments
-                  ]
+        if entry.is_a?(TimeEntry)
+          fields = [format_date(entry.spent_on),
+                    entry.user,
+                    entry.activity,
+                    entry.project,
+                    entry.issue.id,
+                    entry.issue.tracker,
+                    entry.issue.subject,
+                    entry.issue.estimated_hours.to_s.gsub('.', decimal_separator),
+                    entry.hours.to_s.gsub('.', decimal_separator),
+                    entry.comments
+                    ]
+        else
+          # todo: bugs!
+          fields = [format_date(entry.start_date),
+                    entry.assigned_to_id,
+                    nil,
+                    entry.project,
+                    entry.id,
+                    entry.tracker,
+                    entry.subject,
+                    entry.estimated_hours.to_s.gsub('.', decimal_separator),
+                    nil,
+                    nil
+                    ]
+        end
         fields += custom_fields.collect {|f| show_value(entry.custom_value_for(f)) }
 
         csv << fields.collect {|c| begin; ic.iconv(c.to_s); rescue; c.to_s; end }
