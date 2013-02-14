@@ -7,7 +7,9 @@ ja:
   et_label_radio_estimated: 予定ベース
   et_label_radio_hours: 実績ベース
   et_label_base_summary: 集計ベース
+  et_label_options: オプション
   et_label_mine: 自分のレポートのみ表示
+  et_label_without_closed: 終了チケットを表示しない
   et_label_redminedefault: Redmineデフォルトの実績管理へ移動する
   et_label_tmpl: レポートテンプレート
   et_label_tmpl_1: メンバー＞活動＞チケット

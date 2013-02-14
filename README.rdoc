@@ -2,9 +2,16 @@
 
 予定／実績工数比較できるレポーティング機能を提供します。
 
-= 動作確認バージョン(estimate_timelog-0.3.x)
+= 動作確認バージョン(estimate_timelog-0.5.2)
 
-Redmine-1.3.0
+  Redmine version                          2.2.2.stable
+  Ruby version                             1.9.3 (x86_64-linux)
+  Rails version                            3.2.11
+
+
+Redmine-1.3.x以下のバージョンをお使いの方は
+
+0.3.x あたりをご利用ください。(よくわかんない)
 
 Redmine-1.2.x以下のバージョンをお使いの方は
 
@@ -14,11 +21,14 @@ Redmine-1.2.x以下のバージョンをお使いの方は
 
 redmine_estimate_timelogフォルダをまるごと
 
-vender/plugin
+/path-to-redmine-root/plugin
 
 に解凍し、Redmineを再起動するだけでOKです。
 
 dbのmigretionは必要ありません。
+
+= 必須プラグイン
+v0.5.0 から [verification](git://github.com/rails/verification.git) 必要です。
 
 = 使い方
 
@@ -30,10 +40,27 @@ dbのmigretionは必要ありません。
 
 以下のリンクを参照ください。
 
+- http://d.zeromemory.info/2013/02/13/redmine-estimate_timelog-v0-5-0.html
 - http://d.hatena.ne.jp/toritori0318/20100320/1269108560
 - http://d.hatena.ne.jp/toritori0318/20091128/1259429374
 
+= 既知の不具合
+- 「予定ベース」の場合、csv 出力できない
+
 = バージョン
+== version 0.5.2
+- 「終了チケットを表示しない」オプション追加
+- チケット出力時 redmine の css 適用
+
+== version 0.5.0
+- Redmine 2.x系(Rails3) に対応。
+- レポートの「予定ベース」の出力を実質「予定/実績ベース」に変更。
+- 子チケットが存在する予定工数は工数として集計しない。(Redmineにより集計されて二重カウントになるため)
+- 「全期間」を指定した場合、日付の範囲指定をしないようにした。(日付未設定も表示するため)
+
+== version 0.4.0
+
+- Redmine 1.4 対応
 
 == version 0.3.0
 
@@ -77,8 +104,6 @@ dbのmigretionは必要ありません。
 - レポートで「チケット階層」表示時に、チケットへのリンクが出来るように対応
 - csvのヘッダー表示バグ対応
 - csvのヘッダー年月表示を、htmlと同じ表示に変更
-
-
 
 == version 0.0.3
 

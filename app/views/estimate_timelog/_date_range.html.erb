@@ -1,0 +1,78 @@
+<%= raw link_to(l(:et_label_redminedefault), '/time_entries' + if controller.action_name == 'report'; ('/' + controller.action_name) else '' end) if User.current.allowed_to?(:view_time_entries, nil, :global => true) %>
+<script type="text/javascript">
+  $("#qury_form > form").submit(function() {
+      alert('submit!!');
+  });
+</script>
+<fieldset id="date-range" class="collapsible">
+<legend onclick="toggleFieldset(this);"><%= l(:label_date_range) %></legend>
+<div>
+<p>
+<%= label_tag "period_type_list", l(:description_date_range_list), :class => "hidden-for-sighted" %>
+<%= radio_button_tag 'period_type', '1', !@free_period, :onclick => '$("#from,#to").attr("disabled", true);$("#period").removeAttr("disabled");', :id => "period_type_list"%>
+<%= select_tag 'period', options_for_period_select(params[:period]),
+                         :onchange => 'this.form.submit();',
+                         :onfocus => '$("#period_type_list").attr("checked", true);',
+                         :disabled => @free_period %>
+</p>
+<p>
+<%= label_tag "period_type_interval", l(:description_date_range_interval), :class => "hidden-for-sighted" %>
+<%= radio_button_tag 'period_type', '2', @free_period, :onclick => '$("#from,#to").removeAttr("disabled");$("#period").attr("disabled", true);', :id => "period_type_interval" %>
+<span onclick="$('#period_type_interval').checked = true;">
+<%= l(:label_date_from_to,
+        :start => ((label_tag "from", l(:description_date_from), :class => "hidden-for-sighted") +
+            text_field_tag('from', @from, :size => 10, :disabled => !@free_period) + calendar_for('from')),
+        :end => ((label_tag "to", l(:description_date_to), :class => "hidden-for-sighted") +
+            text_field_tag('to', @to, :size => 10, :disabled => !@free_period) + calendar_for('to'))).html_safe %>
+</span>
+</p>
+</div>
+</fieldset>
+
+<fieldset id="sum_type" class="collapsible">
+<legend onclick="toggleFieldset(this);"><%= l(:et_label_base_summary) %></legend>
+<div>
+ <p>
+   <%= radio_button_tag 'est_type', '1', @est_flg %>
+   <%= l(:et_label_radio_estimated) %>
+ </p>
+ <p>
+   <%= radio_button_tag 'est_type', '2', !@est_flg %>
+   <%= l(:et_label_radio_hours) %>
+ </p>
+</div>
+</fieldset>
+
+<fieldset id="option-range" class="collapsible">
+<legend onclick="toggleFieldset(this);"><%= l(:et_label_options) %></legend>
+<div>
+ <p>
+ <%=  check_box_tag 'my_type', User.current.id, @mine_flg %> <%= l(:et_label_mine) %><br>
+ <%=  check_box_tag 'without_closed', '1', @without_closed_flg %> <%= l(:et_label_without_closed) %>
+ </p>
+</div>
+</fieldset>
+
+<p class="buttons">
+  <%= link_to_function l(:button_apply), '$("#query_form").submit()', :class => 'icon icon-checked' %>
+  <%= link_to l(:button_clear), {:controller => controller_name, :action => controller.action_name, :project_id => @project, :issue_id => @issue}, :class => 'icon icon-reload' %>
+</p>
+
+<div class="tabs">
+<% url_params = @free_period ? { :from => @from, :to => @to } : { :period => params[:period] } %>
+<% url_params['est_flg'] = @est_flg if !@est_flg %>
+<% url_params['mine_flg'] = @mine_flg if @mine_flg %>
+<% url_params['without_closed'] = @without_closed_flg if !@without_closed_flg %>
+<ul>
+    <li><%= link_to(l(:label_details), url_params.merge({:controller => 'estimate_timelog', :action => 'details', :project_id => @project }),
+                                       :class => (controller.action_name == 'details' ? 'selected' : nil)) %></li>
+    <li><%= link_to(l(:label_report), url_params.merge({:controller => 'estimate_timelog', :action => 'report', :project_id => @project}),
+                                       :class => (controller.action_name == 'report' ? 'selected' : nil)) %></li>
+</ul>
+</div>
+
+<%= javascript_tag do %>
+$('#from, #to').change(function(){
+  $('#period_type_interval').attr('checked', true); $('#from,#to').removeAttr('disabled'); $('#period').attr('disabled', true);
+});
+<% end %>

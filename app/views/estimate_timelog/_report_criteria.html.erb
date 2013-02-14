@@ -1,0 +1,46 @@
+<% @hours.collect {|h| h[criterias[level]].to_s}.uniq.each do |value| %>
+<% hours_for_value = select_hours(hours, criterias[level], value) -%>
+<% next if hours_for_value.empty? -%>
+<% obj = abstract_obj_from_criterias(criterias[level], value) %>
+<tr class="<%= cycle('odd', 'even') %> <%= 'last-level' unless criterias.length > level+1 %><%= obj.css_classes if obj && obj.is_a?(Issue) %>">
+    <%= ('<td></td>' * level).html_safe %>
+    <% tmp_value = format_criteria_value(criterias[level], value, obj) %>
+    <% check_value = tmp_value.to_s.scan(/#([0-9]*):/) %>
+    <% if check_value.length > 0 %>
+    <td class="subject"><%= link_to h(format_criteria_value(criterias[level], value, obj)), :controller => 'issues', :action => 'show', :id => check_value[0][0] %></td>
+    <% else %>
+    <td><%= h(format_criteria_value(criterias[level], value)) %></td>
+    <% end %>
+    <%= ('<td></td>' * (criterias.length - level - 1)).html_safe -%>
+    <% wkrow = {} -%>
+    <% total = 0 -%>
+    <% total_est = 0 -%>
+    <% total_all = 0 -%>
+    <% total_est_all = 0 -%>
+    <%
+        wkrow = select_hours(hours_for_value, @columns, '')
+        if (criterias.length - 1 == level)
+          total_est += sum_hours_est(wkrow)
+        else
+          total_est_all += sum_hours_est(wkrow)
+        end
+    -%>
+    <td class="hours"><%= html_hours("%.2f" % total_est) if total_est > 0 %><%= raw '(' + html_hours("%.2f" % total_est_all) + ')' if total_est_all > 0 %></td>
+    <%
+        if (criterias.length - 1 == level)
+          total += sum_hours(wkrow, true)
+        end
+    -%>
+    <td class="hours"><%= html_hours("%.2f" % total) if total > 0 %></td>
+
+    <% if criterias.length <= level+1 && @issue_cols -%>
+      <% @issue_cols.each do |col| -%>
+      <td align="center"><%= get_issuescol(hours_for_value, @columns, col) %></td>
+      <% end -%>
+    <% end -%>
+</tr>
+<% if criterias.length > level+1 -%>
+<%= render(:partial => 'report_criteria', :locals => {:criterias => criterias, :hours => hours_for_value, :level => (level + 1)}) %>
+<% end -%>
+
+<% end %>
