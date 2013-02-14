@@ -1,16 +1,17 @@
 <% @hours.collect {|h| h[criterias[level]].to_s}.uniq.each do |value| %>
 <% hours_for_value = select_hours(hours, criterias[level], value) -%>
 <% next if hours_for_value.empty? -%>
-<tr class="<%= cycle('odd', 'even') %> <%= 'last-level' unless criterias.length > level+1 %>">
-    <%= raw '<td></td>' * level %>
-    <% tmp_value = format_criteria_value(criterias[level], value) %>
+<% obj = abstract_obj_from_criterias(criterias[level], value) %>
+<tr class="<%= cycle('odd', 'even') %> <%= 'last-level' unless criterias.length > level+1 %><%= obj.css_classes if obj && obj.is_a?(Issue) %>">
+    <%= ('<td></td>' * level).html_safe %>
+    <% tmp_value = format_criteria_value(criterias[level], value, obj) %>
     <% check_value = tmp_value.to_s.scan(/#([0-9]*):/) %>
     <% if check_value.length > 0 %>
-    <td><%= link_to h(format_criteria_value(criterias[level], value)), :controller => 'issues', :action => 'show', :id => check_value[0][0] %></td>
+    <td class="subject"><%= link_to h(format_criteria_value(criterias[level], value, obj)), :controller => 'issues', :action => 'show', :id => check_value[0][0] %></td>
     <% else %>
     <td><%= h(format_criteria_value(criterias[level], value)) %></td>
     <% end %>
-    <%= raw '<td></td>' * (criterias.length - level - 1) -%>
+    <%= ('<td></td>' * (criterias.length - level - 1)).html_safe -%>
     <% wkrow = {} -%>
     <% total = 0 -%>
     <% total_est = 0 -%>
