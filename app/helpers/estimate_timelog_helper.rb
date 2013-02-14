@@ -128,17 +128,32 @@ module EstimateTimelogHelper
       csv << headers.collect {|c| begin; ic.iconv(c.to_s); rescue; c.to_s; end }
       # csv lines
       entries.each do |entry|
-        fields = [format_date(entry.spent_on),
-                  entry.user,
-                  entry.activity,
-                  entry.project,
-                  (entry.issue ? entry.issue.id : nil),
-                  (entry.issue ? entry.issue.tracker : nil),
-                  (entry.issue ? entry.issue.subject : nil),
-                  entry.issue.estimated_hours.to_s.gsub('.', decimal_separator),
-                  entry.hours.to_s.gsub('.', decimal_separator),
-                  entry.comments
-                  ]
+        if entry.is_a?(TimeEntry)
+          fields = [format_date(entry.spent_on),
+                    entry.user,
+                    entry.activity,
+                    entry.project,
+                    entry.issue.id,
+                    entry.issue.tracker,
+                    entry.issue.subject,
+                    entry.issue.estimated_hours.to_s.gsub('.', decimal_separator),
+                    entry.hours.to_s.gsub('.', decimal_separator),
+                    entry.comments
+                    ]
+        else
+          # todo: bugs!
+          fields = [format_date(entry.start_date),
+                    entry.assigned_to_id,
+                    nil,
+                    entry.project,
+                    entry.id,
+                    entry.tracker,
+                    entry.subject,
+                    entry.estimated_hours.to_s.gsub('.', decimal_separator),
+                    nil,
+                    nil
+                    ]
+        end
         fields += custom_fields.collect {|f| show_value(entry.custom_value_for(f)) }
 
         csv << fields.collect {|c| begin; ic.iconv(c.to_s); rescue; c.to_s; end }
@@ -147,9 +162,21 @@ module EstimateTimelogHelper
     export
   end
 
-  def format_criteria_value(criteria, value)
+  # yet issue only
+  def abstract_obj_from_criterias(criteria, value)
+    if !value.blank? && k = @available_criterias[criteria][:klass]
+      obj = k.find_by_id(value.to_i)
+      if obj.is_a?(Issue)
+        obj
+      end
+    end
+  end
+
+  def format_criteria_value(criteria, value, obj = nil)
     if value.blank?
       l(:label_none)
+    elsif obj.is_a?(Issue)
+        obj.visible? ? "#{obj.tracker} ##{obj.id}: #{obj.subject}" : "##{obj.id}"
     elsif k = @available_criterias[criteria][:klass]
       obj = k.find_by_id(value.to_i)
       if obj.is_a?(Issue)

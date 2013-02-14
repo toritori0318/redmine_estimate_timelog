@@ -224,6 +224,7 @@ class EstimateTimelogController < ApplicationController
       sql << "    '' as spent_on, SUM(estimated_hours) AS hours_est, 0 AS hours,   "
       sql << "    (select count(*) from issues wk where wk.parent_id = issues.id) child_cnt "
       sql << "    FROM issues  "
+      sql << "    INNER JOIN #{IssueStatus.table_name} isst ON issues.status_id = isst.id   "
       sql << "    LEFT JOIN projects ON issues.project_id = projects.id   "
       sql << "      WHERE 1=1"
       sql << "      AND (%s) " % @project.project_condition(Setting.display_subprojects_issues?) if @project
@@ -234,6 +235,7 @@ class EstimateTimelogController < ApplicationController
           sql << "     AND (due_date   >= '%s')" % [ActiveRecord::Base.connection.quoted_date(@from.to_time)]
         end
         sql << "     AND (issues.assigned_to_id = '%s')" % [User.current.id] if params[:my_type]
+        sql << "     AND isst.is_closed = 0 " if @without_closed_flg
       end
       sql << "    GROUP BY #{sql_group_by_yotei}, issues.id"
       if params[:est_type] == '1'
@@ -244,6 +246,7 @@ class EstimateTimelogController < ApplicationController
       end
       sql << "SELECT #{sql_select_jisseki}, issues.id as issue_id, '' as spent_on, '' as hours_est, SUM(hours) AS hours, 0 child_cnt "
       sql << " FROM time_entries  LEFT JOIN issues ON time_entries.issue_id = issues.id   "
+      sql << "    INNER JOIN #{IssueStatus.table_name} isst ON issues.status_id = isst.id   "
       sql << "    LEFT JOIN       projects ON issues.project_id = projects.id "
       sql << "      WHERE 1=1"
       sql << "      AND (%s) " % @project.project_condition(Setting.display_subprojects_issues?) if @project
@@ -253,6 +256,7 @@ class EstimateTimelogController < ApplicationController
           sql << "     AND (spent_on BETWEEN '%s' AND '%s')" % [ActiveRecord::Base.connection.quoted_date(@from.to_time), ActiveRecord::Base.connection.quoted_date(@to.to_time)]
         end
         sql << "     AND (time_entries.user_id = '%s')" % [User.current.id] if params[:my_type]
+        sql << "     AND isst.is_closed = 0 " if @without_closed_flg
       end
       sql << "    group by #{sql_group_by_jisseki}, issues.id "
       if params[:est_type] == '1'
@@ -303,25 +307,28 @@ class EstimateTimelogController < ApplicationController
             cond << ["#{TimeEntry.table_name}.user_id = ?", User.current.id]
         end
 
+        if @without_closed_flg
+          cond << ["#{IssueStatus.table_name}.is_closed = 0"]
+        end
         cond << ['spent_on BETWEEN ? AND ?', @from, @to]
 
         respond_to do |format|
             format.html {
                 # Paginate results
-                @entry_count = TimeEntry.count(:include => :project, :conditions => cond.conditions)
+                @entry_count = TimeEntry.count(:include => [{:issue => :status}, :project], :conditions => cond.conditions)
                 @entry_pages = Paginator.new self, @entry_count, per_page_option, params['page']
                 @entries = TimeEntry.visible.find(:all,
-                                          :include => [:project, :activity, :user, {:issue => :tracker}],
+                                          :include => [{:issue => :status}, :project, :activity, :user, {:issue => :tracker}],
                                           :conditions => cond.conditions,
                                           :order => sort_clause,
                                           :limit  =>  @entry_pages.items_per_page,
                                           :offset =>  @entry_pages.current.offset)
-                @total_hours = TimeEntry.sum(:hours, :include => :project, :conditions => cond.conditions).to_f
+                @total_hours = TimeEntry.sum(:hours, :include => [{:issue => :status}, :project], :conditions => cond.conditions).to_f
                 render :layout => !request.xhr?
             }
             format.atom {
                 entries = TimeEntry.visible.find(:all,
-                                         :include => [:project, :activity, :user, {:issue => :tracker}],
+                                         :include => [{:issue => [:status, :tracker]}, :project, :activity, :user],
                                          :conditions => cond.conditions,
                                          :order => "#{TimeEntry.table_name}.created_on DESC",
                                          :limit => Setting.feeds_limit.to_i)
@@ -330,7 +337,7 @@ class EstimateTimelogController < ApplicationController
             format.csv {
                 # Export all entries
                 @entries = TimeEntry.visible.find(:all,
-                                          :include => [:project, :activity, :user, {:issue => [:tracker, :assigned_to, :priority]}],
+                                          :include => [{:issue => [:status, :tracker, :assigned_to, :priority]}, :project, :activity, :user],
                                           :conditions => cond.conditions,
                                           :order => sort_clause)
                                           send_data(entries_to_csv(@entries), :type => 'text/csv; header=present', :filename => 'timelog.csv')
@@ -357,6 +364,10 @@ class EstimateTimelogController < ApplicationController
             cond << ["#{Issue.table_name}.assigned_to_id = ?", User.current.id]
         end
 
+        if @without_closed_flg
+          cond << ["#{IssueStatus.table_name}.is_closed = 0"]
+        end
+
         if (!@period_all)
           cond << ['(start_date <= ?) AND (due_date   >= ?) ', @to, @from]
         end
@@ -364,20 +375,20 @@ class EstimateTimelogController < ApplicationController
         respond_to do |format|
             format.html {
                 # Paginate results
-                @entry_count = Issue.count(:include => :project, :conditions => cond.conditions)
+                @entry_count = Issue.count(:include => [:status, :project], :conditions => cond.conditions)
                 @entry_pages = Paginator.new self, @entry_count, per_page_option, params['page']
                 @entries = Issue.find(:all,
-                                          :include => [:project, :assigned_to],
+                                          :include => [:status, :project, :assigned_to],
                                           :conditions => cond.conditions,
                                           :order => sort_clause,
                                           :limit  =>  @entry_pages.items_per_page,
                                           :offset =>  @entry_pages.current.offset)
-                @total_hours = Issue.sum(:estimated_hours, :include => :project, :conditions => cond.conditions).to_f
+                @total_hours = Issue.sum(:estimated_hours, :include => [:status, :project], :conditions => cond.conditions).to_f
                 render :layout => !request.xhr?
             }
             format.atom {
                 entries = Issue.find(:all,
-                                         :include => [:project, :assigned_to],
+                                         :include => [:status, :project, :assigned_to],
                                          :conditions => cond.conditions,
                                          :order => "#{Issue.table_name}.created_on DESC",
                                          :limit => Setting.feeds_limit.to_i)
@@ -386,10 +397,10 @@ class EstimateTimelogController < ApplicationController
             format.csv {
                 # Export all entries
                 @entries = Issue.find(:all,
-                                          :include => [:project, :assigned_to],
+                                          :include => [:status, :project, :assigned_to],
                                           :conditions => cond.conditions,
                                           :order => sort_clause)
-                                          send_data(entries_to_csv(@entries).read, :type => 'text/csv; header=present', :filename => 'timelog.csv')
+                                          send_data(entries_to_csv(@entries).read, :type => 'text/csv; header=present', :filename => 'timelog_est.csv')
             }
         end
     end
@@ -400,7 +411,7 @@ class EstimateTimelogController < ApplicationController
     @time_entry ||= TimeEntry.new(:project => @project, :issue => @issue, :user => User.current, :spent_on => User.current.today)
     @time_entry.attributes = params[:time_entry]
 
-    call_hook(:controller_estimate_timelog_edit_before_save, { :params => params, :time_entry => @time_entry })
+    call_hook(:controller_estimate_timelog_edit_before_save, {:params => params, :time_entry => @time_entry })
 
     if request.post? and @time_entry.save
       flash[:notice] = l(:notice_successful_update)
@@ -451,7 +462,8 @@ private
   def retrieve_date_range
     @free_period = false
     @from, @to = nil, nil
-    @period_all = false;
+    @period_all = false
+    @without_closed_flg = false
 
     if params[:period_type] == '1' || (params[:period_type].nil? && !params[:period].nil?)
       case params[:period].to_s
@@ -495,12 +507,15 @@ private
     @from ||= (Issue.minimum(:start_date, :include => :project, :conditions => Project.allowed_to_condition(User.current, :view_time_entries)) || Date.today) - 1
     @to   ||= (Issue.maximum(:due_date, :include => :project, :conditions => Project.allowed_to_condition(User.current, :view_time_entries)) || Date.today)
 
-    if params[:est_type] == '1' || params[:est_flg] == "true" || params[:est_type] == nil
+    if params[:est_type] == '1' || params[:est_flg] == "true"
       @est_flg = true
     elsif params[:est_type] == '2' || params[:est_flg] == "false"
       @est_flg = false
+    else
+      @est_flg = true
     end
     @mine_flg = params[:my_type] || params[:mine_flg]
+    @without_closed_flg = params[:without_closed]
   end
 
 end
