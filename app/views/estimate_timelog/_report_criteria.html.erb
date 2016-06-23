@@ -9,7 +9,7 @@
     <% if check_value.length > 0 %>
     <td class="subject"><%= link_to h(format_criteria_value(criterias[level], value, obj)), :controller => 'issues', :action => 'show', :id => check_value[0][0] %></td>
     <% else %>
-    <td><%= h(format_criteria_value(criterias[level], value)) %></td>
+    <td class="name"><%= h(format_criteria_value(criterias[level], value)) %></td>
     <% end %>
     <%= ('<td></td>' * (criterias.length - level - 1)).html_safe -%>
     <% wkrow = {} -%>

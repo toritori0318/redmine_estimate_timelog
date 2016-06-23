@@ -150,14 +150,14 @@ class EstimateTimelogController < ApplicationController
     end if @project
 
     # Add list and boolean time entry custom fields
-    TimeEntryCustomField.find(:all).select {|cf| %w(list bool).include? cf.field_format }.each do |cf|
+    TimeEntryCustomField.all().select {|cf| %w(list bool).include? cf.field_format }.each do |cf|
       @available_criterias["cf_#{cf.id}"] = {:sql => "(SELECT c.value FROM #{CustomValue.table_name} c WHERE c.custom_field_id = #{cf.id} AND c.customized_type = 'TimeEntry' AND c.customized_id = #{TimeEntry.table_name}.id)",
                                              :format => cf.field_format,
                                              :label => cf.name}
     end
 
     # Add list and boolean time entry activity custom fields
-    TimeEntryActivityCustomField.find(:all).select {|cf| %w(list bool).include? cf.field_format }.each do |cf|
+    TimeEntryActivityCustomField.all().select {|cf| %w(list bool).include? cf.field_format }.each do |cf|
       @available_criterias["cf_#{cf.id}"] = {:sql => "(SELECT c.value FROM #{CustomValue.table_name} c WHERE c.custom_field_id = #{cf.id} AND c.customized_type = 'Enumeration' AND c.customized_id = #{TimeEntry.table_name}.activity_id)",
                                              :format => cf.field_format,
                                              :label => cf.name}
@@ -315,32 +315,40 @@ class EstimateTimelogController < ApplicationController
         respond_to do |format|
             format.html {
                 # Paginate results
-                @entry_count = TimeEntry.count(:include => [{:issue => :status}, :project], :conditions => cond.conditions)
+                @entry_count = TimeEntry.includes({:issue => :status}, :project)
+                  .where(cond.conditions)
+                  .references(:status, :project)
+                  .count()
                 @entry_pages = Paginator.new self, @entry_count, per_page_option, params['page']
-                @entries = TimeEntry.visible.find(:all,
-                                          :include => [{:issue => :status}, :project, :activity, :user, {:issue => :tracker}],
-                                          :conditions => cond.conditions,
-                                          :order => sort_clause,
-                                          :limit  =>  @entry_pages.items_per_page,
-                                          :offset =>  @entry_pages.current.offset)
-                @total_hours = TimeEntry.sum(:hours, :include => [{:issue => :status}, :project], :conditions => cond.conditions).to_f
+                @entries = TimeEntry.visible
+                  .includes({:issue => :status}, :project, :activity, :user, {:issue => :tracker})
+                  .where(cond.conditions)
+                  .references(:status, :project, :user)
+                  .order(sort_clause)
+                  .limit(@entry_pages.items_per_page)
+                  .offset(@entry_pages.current.offset)
+                #@total_hours = TimeEntry.sum(:hours, :include => [{:issue => :status}, :project], :conditions => cond.conditions).to_f
+                @total_hours = TimeEntry.includes({:issue => :status}, :project)
+                  .where(cond.conditions)
+                  .references(:status, :project)
+                  .sum(:hours).to_f
                 render :layout => !request.xhr?
             }
             format.atom {
-                entries = TimeEntry.visible.find(:all,
-                                         :include => [{:issue => [:status, :tracker]}, :project, :activity, :user],
-                                         :conditions => cond.conditions,
-                                         :order => "#{TimeEntry.table_name}.created_on DESC",
-                                         :limit => Setting.feeds_limit.to_i)
-                                         render_feed(entries, :title => l(:label_spent_time))
+                entries = TimeEntry.visible
+                  .includes({:issue => [:status, :tracker]}, :project, :activity, :user)
+                  .where(cond.conditions)
+                  .references(:status, :project, :user)
+                  .order("#{TimeEntry.table_name}.created_on DESC")
+                  .limit(Setting.feeds_limit.to_i)
             }
             format.csv {
                 # Export all entries
-                @entries = TimeEntry.visible.find(:all,
-                                          :include => [{:issue => [:status, :tracker, :assigned_to, :priority]}, :project, :activity, :user],
-                                          :conditions => cond.conditions,
-                                          :order => sort_clause)
-                                          send_data(entries_to_csv(@entries), :type => 'text/csv; header=present', :filename => 'timelog.csv')
+                @entries = TimeEntry.visible
+                  .includes({:issue => [:status, :tracker, :assigned_to, :priority]}, :project, :activity, :user)
+                  .where(cond.conditions)
+                  .references(:status, :project, :user)
+                  .order(sort_clause)
             }
         end
     elsif @est_flg
@@ -375,32 +383,39 @@ class EstimateTimelogController < ApplicationController
         respond_to do |format|
             format.html {
                 # Paginate results
-                @entry_count = Issue.count(:include => [:status, :project], :conditions => cond.conditions)
+                @entry_count = Issue.includes(:status, :project)
+                  .references(:status, :project)
+                  .where(cond.conditions)
+                  .count()
                 @entry_pages = Paginator.new self, @entry_count, per_page_option, params['page']
-                @entries = Issue.find(:all,
-                                          :include => [:status, :project, :assigned_to],
-                                          :conditions => cond.conditions,
-                                          :order => sort_clause,
-                                          :limit  =>  @entry_pages.items_per_page,
-                                          :offset =>  @entry_pages.current.offset)
-                @total_hours = Issue.sum(:estimated_hours, :include => [:status, :project], :conditions => cond.conditions).to_f
+                @entries = Issue.includes(:status, :project, :assigned_to)
+                  .where(cond.conditions)
+                  .references(:status, :project, :assigned_to)
+                  .order(sort_clause)
+                  .limit(@entry_pages.items_per_page)
+                  .offset(@entry_pages.current.offset)
+                #@total_hours = Issue.sum(:estimated_hours, :include => [:status, :project], :conditions => cond.conditions).to_f
+                @total_hours = Issue
+                  .includes(:status, :project)
+                  .where(cond.conditions)
+                  .sum(:estimated_hours).to_f
                 render :layout => !request.xhr?
             }
             format.atom {
-                entries = Issue.find(:all,
-                                         :include => [:status, :project, :assigned_to],
-                                         :conditions => cond.conditions,
-                                         :order => "#{Issue.table_name}.created_on DESC",
-                                         :limit => Setting.feeds_limit.to_i)
-                                         render_feed(entries, :title => l(:label_spent_time))
+                entries = Issue.includes(:status, :project, :assigned_to)
+                  .where(cond.conditions)
+                  .references(:status, :project, :assigned_to)
+                  .order("#{Issue.table_name}.created_on DESC")
+                  .limit(Setting.feeds_limit.to_i)
+                 render_feed(entries, :title => l(:label_spent_time))
             }
             format.csv {
                 # Export all entries
-                @entries = Issue.find(:all,
-                                          :include => [:status, :project, :assigned_to],
-                                          :conditions => cond.conditions,
-                                          :order => sort_clause)
-                                          send_data(entries_to_csv(@entries).read, :type => 'text/csv; header=present', :filename => 'timelog_est.csv')
+                @entries = Issue.includes(:status, :project, :assigned_to)
+                  .where(cond.conditions)
+                  .references(:status, :project, :assigned_to)
+                  .order(sort_clause)
+                send_data(entries_to_csv(@entries).read, :type => 'text/csv; header=present', :filename => 'timelog_est.csv')
             }
         end
     end
