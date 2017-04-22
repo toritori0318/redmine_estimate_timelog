@@ -15,8 +15,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-require 'iconv'
-
 module EstimateTimelogHelper
   include ApplicationHelper
 
@@ -108,7 +106,6 @@ module EstimateTimelogHelper
   end
 
   def entries_to_csv(entries)
-    ic = Iconv.new(l(:general_csv_encoding), 'UTF-8')
     decimal_separator = l(:general_csv_decimal_separator)
     custom_fields = TimeEntryCustomField.find(:all)
     export = FCSV.generate(:col_sep => l(:general_csv_separator)) do |csv|
@@ -127,7 +124,7 @@ module EstimateTimelogHelper
       # Export custom fields
       headers += custom_fields.collect(&:name)
 
-      csv << headers.collect {|c| begin; ic.iconv(c.to_s); rescue; c.to_s; end }
+      csv << headers.collect {|c| begin; c.to_s.encode(l(:general_csv_encoding)); rescue; c.to_s; end }
       # csv lines
       entries.each do |entry|
         if entry.is_a?(TimeEntry)
@@ -158,7 +155,7 @@ module EstimateTimelogHelper
         end
         fields += custom_fields.collect {|f| show_value(entry.custom_value_for(f)) }
 
-        csv << fields.collect {|c| begin; ic.iconv(c.to_s); rescue; c.to_s; end }
+        csv << fields.collect {|c| begin; c.to_s.encode(l(:general_csv_encoding)); rescue; c.to_s; end }
       end
     end
     export
@@ -248,7 +245,6 @@ module EstimateTimelogHelper
   end
 
   def to_utf8(s)
-    @ic ||= Iconv.new(l(:general_csv_encoding), 'UTF-8')
-    begin; @ic.iconv(s.to_s); rescue; s.to_s; end
+    begin; s.to_s.encode(l(:general_csv_encoding)); rescue; s.to_s; end
   end
 end
