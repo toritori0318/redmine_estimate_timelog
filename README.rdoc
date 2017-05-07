@@ -48,6 +48,10 @@ v0.5.0 から [verification](git://github.com/rails/verification.git) 必要で�
 - 「予定ベース」の場合、csv 出力できない
 
 = バージョン
+
+== version 0.5.3
+- サブディレクトリ運用時のリンク不具合対応
+
 == version 0.5.2
 - 「終了チケットを表示しない」オプション追加
 - チケット出力時 redmine の css 適用
