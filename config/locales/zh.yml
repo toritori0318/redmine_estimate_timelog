@@ -1,0 +1,22 @@
+zh:
+  et_label_menu: 工时报告
+  et_label_estimated_hours: 计划工时
+  et_label_hours: 实际工时
+  et_label_estimated_total: 计划工时总计
+  et_label_hours_total: 实际工时总计
+  et_label_radio_estimated: 计划工时
+  et_label_radio_hours: 实用工时
+  et_label_base_summary: 统计基准
+  et_label_options: 选项
+  et_label_mine: 仅显示我的报告
+  et_label_without_closed: 不显示已关闭问题的工时统计
+  et_label_redminedefault: Redmine默认设置
+  et_label_tmpl: 报告模板
+  et_label_tmpl_1: 成员ー＞活动＞问题
+  et_label_tmpl_2: 成员ー＞问题
+  et_label_tmpl_3: 项目ー＞成员ー＞问题
+  et_label_tmpl_4: 项目ー＞版本ー＞成员
+
+  et_label_start_date: 起始日期
+  et_label_due_date: 截止日期
+  et_label_done_ratio: 完成率
