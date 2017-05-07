@@ -1,4 +1,4 @@
-<%= raw link_to(l(:et_label_redminedefault), '/time_entries' + if controller.action_name == 'report'; ('/' + controller.action_name) else '' end) if User.current.allowed_to?(:view_time_entries, nil, :global => true) %>
+<%= raw link_to(l(:et_label_redminedefault), (config.relative_url_root || '') + '/time_entries' + if controller.action_name == 'report'; ('/' + controller.action_name) else '' end) if User.current.allowed_to?(:view_time_entries, nil, :global => true) %>
 <script type="text/javascript">
   $("#qury_form > form").submit(function() {
       alert('submit!!');
