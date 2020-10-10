@@ -19,11 +19,8 @@ class EstimateTimelogController < ApplicationController
   unloadable
 
   menu_item :issues
-  before_filter :find_project, :authorize, :only => [:edit, :destroy]
-  before_filter :find_optional_project, :only => [:report, :details]
-
-  # rails3: need git://github.com/rails/verification.git
-  verify :method => :post, :only => :destroy, :redirect_to => { :action => :details }
+  before_action :find_project, :authorize, :only => [:edit, :destroy]
+  before_action :find_optional_project, :only => [:report, :details]
 
   helper :sort
   include SortHelper
@@ -519,8 +516,8 @@ private
     end
 
     @from, @to = @to, @from if @from && @to && @from > @to
-    @from ||= (Issue.minimum(:start_date, :include => :project, :conditions => Project.allowed_to_condition(User.current, :view_time_entries)) || Date.today) - 1
-    @to   ||= (Issue.maximum(:due_date, :include => :project, :conditions => Project.allowed_to_condition(User.current, :view_time_entries)) || Date.today)
+    @from ||= (Issue.minimum(:start_date) || Date.today) - 1
+    @to   ||= (Issue.maximum(:due_date) || Date.today)
 
     if params[:est_type] == '1' || params[:est_flg] == "true"
       @est_flg = true

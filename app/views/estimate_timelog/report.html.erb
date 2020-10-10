@@ -88,7 +88,7 @@
 </div>
 
 <% other_formats_links do |f| %>
-	<%= f.link_to 'CSV', :url => params %>
+	<%= f.link_to 'CSV', :url => params.permit! %>
 <% end %>
 <% end %>
 <% end %>

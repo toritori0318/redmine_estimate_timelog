@@ -28,8 +28,8 @@ already in the URI %>
 <span class="pagination"><%= pagination_links_full @entry_pages, @entry_count %></span>
 
 <% other_formats_links do |f| %>
-	<%= f.link_to 'Atom', :url => params.merge({:issue_id => @issue, :key => User.current.rss_key}) %>
-	<%= f.link_to 'CSV', :url => params %>
+	<%= f.link_to 'Atom', :url => params.merge({:issue_id => @issue, :key => User.current.rss_key}).permit! %>
+	<%= f.link_to 'CSV', :url => params.permit! %>
 <% end %>
 
 <% end %>

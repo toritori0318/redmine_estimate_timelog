@@ -92,7 +92,7 @@ module EstimateTimelogHelper
   end
 
   def options_for_period_select(value)
-    options_for_select([[l(:label_all_time), 'all'],
+    options_for_select([[l(:et_label_all_time), 'all'],
                         [l(:label_today), 'today'],
                         [l(:label_yesterday), 'yesterday'],
                         [l(:label_this_week), 'current_week'],
